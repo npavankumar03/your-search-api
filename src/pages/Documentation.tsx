@@ -13,34 +13,35 @@ const Documentation = () => {
     setTimeout(() => setCopiedBlock(null), 2000);
   };
 
-  const apiEndpoint = 'https://fcemwlfmgszodrprvpzu.supabase.co/functions/v1/search';
+  // Use placeholder for user's server IP
+  const apiEndpoint = 'http://YOUR_SERVER_IP:3001/search';
 
   const codeExamples = {
-    curl: `curl -X POST "${apiEndpoint}" \\
+    curl: `curl -X POST "http://YOUR_SERVER_IP:3001/search" \\
   -H "Content-Type: application/json" \\
-  -d '{"query": "best restaurants in NYC", "engine": "google"}'`,
+  -d '{"query": "best restaurants in NYC", "engine": "duckduckgo"}'`,
     
     python: `import requests
 
 response = requests.post(
-    "${apiEndpoint}",
+    "http://YOUR_SERVER_IP:3001/search",
     json={
         "query": "best restaurants in NYC",
-        "engine": "google"
+        "engine": "duckduckgo"
     }
 )
 
 results = response.json()
 print(results)`,
     
-    javascript: `const response = await fetch("${apiEndpoint}", {
+    javascript: `const response = await fetch("http://YOUR_SERVER_IP:3001/search", {
   method: "POST",
   headers: {
     "Content-Type": "application/json"
   },
   body: JSON.stringify({
     query: "best restaurants in NYC",
-    engine: "google"
+    engine: "duckduckgo"
   })
 });
 
@@ -48,7 +49,7 @@ const results = await response.json();
 console.log(results);`,
     
     php: `<?php
-$ch = curl_init("${apiEndpoint}");
+$ch = curl_init("http://YOUR_SERVER_IP:3001/search");
 
 curl_setopt_array($ch, [
     CURLOPT_POST => true,
@@ -58,7 +59,7 @@ curl_setopt_array($ch, [
     ],
     CURLOPT_POSTFIELDS => json_encode([
         "query" => "best restaurants in NYC",
-        "engine" => "google"
+        "engine" => "duckduckgo"
     ])
 ]);
 
@@ -79,12 +80,12 @@ import (
 func main() {
     payload := map[string]string{
         "query":  "best restaurants in NYC",
-        "engine": "google",
+        "engine": "duckduckgo",
     }
     body, _ := json.Marshal(payload)
 
     resp, err := http.Post(
-        "${apiEndpoint}",
+        "http://YOUR_SERVER_IP:3001/search",
         "application/json",
         bytes.NewBuffer(body),
     )
@@ -102,18 +103,36 @@ func main() {
   const nginxConfig = `# /etc/nginx/sites-available/searchapi
 server {
     listen 80;
-    server_name your-domain.com;
+    server_name YOUR_SERVER_IP;
 
-    # Serve the frontend static files
-    root /var/www/searchapi/dist;
-    index index.html;
-
+    # Frontend static files
     location / {
+        root /var/www/searchapi/frontend/dist;
+        index index.html;
         try_files $uri $uri/ /index.html;
+    }
+
+    # Proxy API requests to Node.js backend
+    location /search {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    location /health {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
     }
 
     # Cache static assets
     location ~* \\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2)$ {
+        root /var/www/searchapi/frontend/dist;
         expires 1y;
         add_header Cache-Control "public, immutable";
     }
@@ -123,37 +142,158 @@ server {
     gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
 }`;
 
-  const buildScript = `#!/bin/bash
-# deploy.sh - Run this on your Linux server
-
-# Clone or pull latest code
-cd /var/www/searchapi
-git pull origin main
-
-# Install dependencies and build
-npm install
-npm run build
-
-# Restart Nginx
-sudo systemctl reload nginx
-
-echo "Deployment complete!"`;
-
-  const systemdService = `# /etc/systemd/system/searchapi.service
+  const backendSystemd = `# /etc/systemd/system/searchapi-backend.service
 [Unit]
-Description=SearchAPI Static Server
+Description=SearchAPI Backend Server
 After=network.target
 
 [Service]
 Type=simple
 User=www-data
-WorkingDirectory=/var/www/searchapi
-ExecStart=/usr/bin/npx serve -s dist -l 3000
-Restart=on-failure
+WorkingDirectory=/var/www/searchapi/backend
+ExecStart=/usr/bin/node server.js
+Restart=always
 RestartSec=10
+Environment=PORT=3001
+Environment=NODE_ENV=production
+
+# Logging
+StandardOutput=append:/var/log/searchapi/backend.log
+StandardError=append:/var/log/searchapi/error.log
 
 [Install]
 WantedBy=multi-user.target`;
+
+  const deployScript = `#!/bin/bash
+# deploy.sh - Complete deployment script for Linux VM
+set -e
+
+echo "=== SearchAPI Full Deployment ==="
+
+# Configuration
+APP_DIR="/var/www/searchapi"
+BACKEND_DIR="$APP_DIR/backend"
+FRONTEND_DIR="$APP_DIR/frontend"
+LOG_DIR="/var/log/searchapi"
+
+# Create directories
+sudo mkdir -p $APP_DIR $BACKEND_DIR $FRONTEND_DIR $LOG_DIR
+sudo chown -R $USER:$USER $APP_DIR
+sudo chown -R www-data:www-data $LOG_DIR
+
+# Navigate to app directory
+cd $APP_DIR
+
+# If repo exists, pull; otherwise clone
+if [ -d ".git" ]; then
+    echo "Pulling latest changes..."
+    git pull origin main
+else
+    echo "Cloning repository..."
+    git clone YOUR_REPO_URL .
+fi
+
+# ===== BACKEND SETUP =====
+echo "Setting up backend..."
+cd $BACKEND_DIR
+
+# Copy backend files (adjust path as needed)
+cp -r $APP_DIR/backend/* ./
+
+# Install backend dependencies
+npm install --production
+
+# ===== FRONTEND SETUP =====
+echo "Setting up frontend..."
+cd $FRONTEND_DIR
+
+# Copy frontend source
+cp -r $APP_DIR/src $APP_DIR/public $APP_DIR/index.html $APP_DIR/package.json $APP_DIR/vite.config.ts $APP_DIR/tailwind.config.ts ./
+
+# Create .env with API URL
+echo "VITE_API_URL=http://YOUR_SERVER_IP:3001" > .env
+
+# Install and build frontend
+npm install
+npm run build
+
+# ===== SERVICES =====
+echo "Configuring services..."
+
+# Restart backend service
+sudo systemctl daemon-reload
+sudo systemctl enable searchapi-backend
+sudo systemctl restart searchapi-backend
+
+# Reload Nginx
+sudo nginx -t && sudo systemctl reload nginx
+
+echo "=== Deployment Complete ==="
+echo "Frontend: http://YOUR_SERVER_IP"
+echo "API: http://YOUR_SERVER_IP:3001/search"
+echo ""
+echo "Check backend status: sudo systemctl status searchapi-backend"
+echo "Check backend logs: sudo tail -f /var/log/searchapi/backend.log"`;
+
+  const quickSetup = `#!/bin/bash
+# quick-setup.sh - One-time server setup
+set -e
+
+echo "=== SearchAPI Server Setup ==="
+
+# Update system
+sudo apt update && sudo apt upgrade -y
+
+# Install Node.js 20.x
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# Install Nginx and Git
+sudo apt install -y nginx git
+
+# Create app directories
+sudo mkdir -p /var/www/searchapi/{backend,frontend}
+sudo mkdir -p /var/log/searchapi
+sudo chown -R $USER:$USER /var/www/searchapi
+sudo chown -R www-data:www-data /var/log/searchapi
+
+# Create systemd service for backend
+sudo tee /etc/systemd/system/searchapi-backend.service > /dev/null << 'EOF'
+[Unit]
+Description=SearchAPI Backend Server
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/var/www/searchapi/backend
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=10
+Environment=PORT=3001
+Environment=NODE_ENV=production
+StandardOutput=append:/var/log/searchapi/backend.log
+StandardError=append:/var/log/searchapi/error.log
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Enable backend service
+sudo systemctl daemon-reload
+sudo systemctl enable searchapi-backend
+
+# Open firewall ports
+sudo ufw allow 80/tcp
+sudo ufw allow 3001/tcp
+
+echo "=== Setup Complete ==="
+echo "Next steps:"
+echo "1. Copy your code to /var/www/searchapi/"
+echo "2. Configure Nginx at /etc/nginx/sites-available/searchapi"
+echo "3. Run: sudo ln -s /etc/nginx/sites-available/searchapi /etc/nginx/sites-enabled/"
+echo "4. Run: sudo systemctl start searchapi-backend"
+echo "5. Run: sudo systemctl reload nginx"`;
 
   return (
     <div className="min-h-screen bg-background">
@@ -182,9 +322,45 @@ WantedBy=multi-user.target`;
             API <span className="text-gradient">Documentation</span>
           </h1>
           <p className="text-xl text-muted-foreground">
-            Free, open search API. No authentication required.
+            Self-hosted search API. No external dependencies. 100% on your server.
           </p>
         </div>
+
+        {/* Architecture Overview */}
+        <section className="mb-16">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Server className="w-5 h-5 text-primary" />
+            </div>
+            <h2 className="text-2xl font-bold">Architecture</h2>
+          </div>
+          
+          <div className="glass-card p-6">
+            <pre className="text-sm font-mono text-muted-foreground overflow-x-auto">
+{`┌─────────────────────────────────────────────────────────────────┐
+│                      Your Linux VM                               │
+│                                                                   │
+│   ┌─────────────────────────────────────────────────────────┐   │
+│   │  Nginx (Port 80)                                        │   │
+│   │  ├── / → Static Frontend (React app)                   │   │
+│   │  └── /search → Proxy to Backend :3001                  │   │
+│   └─────────────────────────────────────────────────────────┘   │
+│                              │                                   │
+│                              ▼                                   │
+│   ┌─────────────────────────────────────────────────────────┐   │
+│   │  Node.js Backend (Port 3001)                            │   │
+│   │  ├── DuckDuckGo scraper (no API key needed)            │   │
+│   │  ├── Bing scraper (fallback)                           │   │
+│   │  └── In-memory cache (1 hour TTL)                      │   │
+│   └─────────────────────────────────────────────────────────┘   │
+│                                                                   │
+└─────────────────────────────────────────────────────────────────┘`}
+            </pre>
+            <p className="text-muted-foreground text-sm mt-4">
+              Everything runs on your Linux server. The backend scrapes DuckDuckGo/Bing for real search results - no external API keys required.
+            </p>
+          </div>
+        </section>
 
         {/* Quick Start */}
         <section className="mb-16">
@@ -197,7 +373,7 @@ WantedBy=multi-user.target`;
           
           <div className="glass-card p-6 mb-6">
             <div className="flex items-center justify-between mb-4">
-              <span className="text-sm font-medium text-muted-foreground">API Endpoint</span>
+              <span className="text-sm font-medium text-muted-foreground">API Endpoint (replace YOUR_SERVER_IP)</span>
               <Button 
                 variant="ghost" 
                 size="sm"
@@ -258,14 +434,13 @@ WantedBy=multi-user.target`;
           <div className="glass-card p-6 space-y-6">
             <div>
               <h3 className="font-semibold mb-2">POST /search</h3>
-              <p className="text-muted-foreground mb-4">Perform a web search query.</p>
+              <p className="text-muted-foreground mb-4">Perform a web search query using real scraping.</p>
               
               <h4 className="text-sm font-semibold text-muted-foreground mb-2">Request Body</h4>
               <pre className="bg-secondary/50 p-4 rounded-lg text-sm font-mono mb-4">
 {`{
   "query": string,     // Required: Search query
-  "engine": string,    // Optional: "google" (default), "bing", "yahoo"
-  "location": string   // Optional: Location context
+  "engine": string     // Optional: "duckduckgo" (default), "bing"
 }`}
               </pre>
 
@@ -283,11 +458,22 @@ WantedBy=multi-user.target`;
   ],
   "search_metadata": {
     "query": "your query",
-    "engine": "google",
-    "total_results": "About X results",
+    "engine": "duckduckgo",
+    "total_results": "About 10 results",
     "response_time_ms": 245,
     "cached": false
   }
+}`}
+              </pre>
+            </div>
+
+            <div>
+              <h3 className="font-semibold mb-2">GET /health</h3>
+              <p className="text-muted-foreground mb-4">Health check endpoint.</p>
+              <pre className="bg-secondary/50 p-4 rounded-lg text-sm font-mono">
+{`{
+  "status": "ok",
+  "uptime": 3600.5
 }`}
               </pre>
             </div>
@@ -300,82 +486,61 @@ WantedBy=multi-user.target`;
             <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
               <Server className="w-5 h-5 text-primary" />
             </div>
-            <h2 className="text-2xl font-bold">Linux Server Deployment</h2>
+            <h2 className="text-2xl font-bold">Linux VM Deployment</h2>
           </div>
 
           <div className="space-y-8">
-            {/* Architecture Overview */}
+            {/* Quick Setup Script */}
             <div className="glass-card p-6">
-              <h3 className="font-semibold mb-4">Architecture</h3>
-              <div className="bg-secondary/30 p-4 rounded-lg mb-4">
-                <pre className="text-sm font-mono text-muted-foreground">
-{`┌─────────────────────────────────────────────────────────────┐
-│                    Your Linux Server                        │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │  Nginx (Port 80/443)                                │   │
-│  │  ├── Serves static frontend (HTML/CSS/JS)          │   │
-│  │  └── SSL termination via Certbot                   │   │
-│  └─────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────┘
-                           │
-                           │ API calls from browser
-                           ▼
-┌─────────────────────────────────────────────────────────────┐
-│                  Lovable Cloud (Backend)                    │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │  Edge Functions                                     │   │
-│  │  └── /search - Handles all search requests         │   │
-│  └─────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────┘`}
-                </pre>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold">Step 1: Quick Server Setup</h3>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => copyToClipboard(quickSetup, 'quicksetup')}
+                >
+                  {copiedBlock === 'quicksetup' ? (
+                    <Check className="w-4 h-4 text-primary" />
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )}
+                </Button>
               </div>
-              <p className="text-muted-foreground text-sm">
-                Your Linux server hosts the static frontend. The API runs on Lovable Cloud - 
-                no backend code needed on your server.
+              <p className="text-muted-foreground text-sm mb-4">
+                Run this script once to set up your server with all dependencies:
               </p>
-            </div>
-
-            {/* Step 1: Prerequisites */}
-            <div className="glass-card p-6">
-              <h3 className="font-semibold mb-4">Step 1: Prerequisites</h3>
-              <pre className="bg-secondary/50 p-4 rounded-lg text-sm font-mono overflow-x-auto">
-{`# Update system
-sudo apt update && sudo apt upgrade -y
-
-# Install Node.js 18+
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt install -y nodejs
-
-# Install Nginx
-sudo apt install -y nginx
-
-# Install Git
-sudo apt install -y git
-
-# Verify installations
-node --version && nginx -v && git --version`}
+              <pre className="bg-secondary/50 p-4 rounded-lg text-sm font-mono overflow-x-auto max-h-64 overflow-y-auto">
+                {quickSetup}
               </pre>
             </div>
 
-            {/* Step 2: Clone & Build */}
+            {/* Copy Files */}
             <div className="glass-card p-6">
-              <h3 className="font-semibold mb-4">Step 2: Clone & Build</h3>
+              <h3 className="font-semibold mb-4">Step 2: Copy Application Files</h3>
               <pre className="bg-secondary/50 p-4 rounded-lg text-sm font-mono overflow-x-auto">
-{`# Create web directory
-sudo mkdir -p /var/www/searchapi
-sudo chown $USER:$USER /var/www/searchapi
+{`# On your local machine, copy the backend folder to your server:
+scp -r ./backend/* user@YOUR_SERVER_IP:/var/www/searchapi/backend/
 
-# Clone your repository (replace with your repo URL)
-cd /var/www/searchapi
-git clone https://github.com/YOUR_USERNAME/YOUR_REPO.git .
+# Copy the frontend source (or use git clone):
+scp -r ./src ./public ./index.html ./package.json ./vite.config.ts ./tailwind.config.ts \\
+    user@YOUR_SERVER_IP:/var/www/searchapi/frontend/
 
-# Install dependencies and build
+# SSH into your server
+ssh user@YOUR_SERVER_IP
+
+# Install backend dependencies
+cd /var/www/searchapi/backend
+npm install --production
+
+# Create frontend .env and build
+cd /var/www/searchapi/frontend
+echo "VITE_API_URL=http://YOUR_SERVER_IP:3001" > .env
 npm install
 npm run build`}
               </pre>
             </div>
 
-            {/* Step 3: Nginx Config */}
+            {/* Nginx Config */}
             <div className="glass-card p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold">Step 3: Configure Nginx</h3>
@@ -395,36 +560,25 @@ npm run build`}
                 {nginxConfig}
               </pre>
               <pre className="bg-secondary/50 p-4 rounded-lg text-sm font-mono overflow-x-auto">
-{`# Enable the site
+{`# Save config and enable site
+sudo nano /etc/nginx/sites-available/searchapi
+# Paste the config above, save and exit
+
 sudo ln -s /etc/nginx/sites-available/searchapi /etc/nginx/sites-enabled/
+sudo rm /etc/nginx/sites-enabled/default  # Remove default site
 sudo nginx -t
 sudo systemctl reload nginx`}
               </pre>
             </div>
 
-            {/* Step 4: SSL */}
-            <div className="glass-card p-6">
-              <h3 className="font-semibold mb-4">Step 4: SSL with Certbot (Recommended)</h3>
-              <pre className="bg-secondary/50 p-4 rounded-lg text-sm font-mono overflow-x-auto">
-{`# Install Certbot
-sudo apt install -y certbot python3-certbot-nginx
-
-# Get SSL certificate
-sudo certbot --nginx -d your-domain.com
-
-# Auto-renewal is set up automatically
-sudo certbot renew --dry-run`}
-              </pre>
-            </div>
-
-            {/* Optional: Systemd */}
+            {/* Backend Service */}
             <div className="glass-card p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold">Optional: Systemd Service (for serve)</h3>
+                <h3 className="font-semibold">Step 4: Backend Systemd Service</h3>
                 <Button 
                   variant="ghost" 
                   size="sm"
-                  onClick={() => copyToClipboard(systemdService, 'systemd')}
+                  onClick={() => copyToClipboard(backendSystemd, 'systemd')}
                 >
                   {copiedBlock === 'systemd' ? (
                     <Check className="w-4 h-4 text-primary" />
@@ -433,29 +587,27 @@ sudo certbot renew --dry-run`}
                   )}
                 </Button>
               </div>
-              <p className="text-muted-foreground text-sm mb-4">
-                If you prefer using `serve` instead of Nginx for static files:
-              </p>
               <pre className="bg-secondary/50 p-4 rounded-lg text-sm font-mono overflow-x-auto mb-4">
-                {systemdService}
+                {backendSystemd}
               </pre>
               <pre className="bg-secondary/50 p-4 rounded-lg text-sm font-mono overflow-x-auto">
-{`# Enable and start service
-sudo systemctl daemon-reload
-sudo systemctl enable searchapi
-sudo systemctl start searchapi
-sudo systemctl status searchapi`}
+{`# Start the backend service
+sudo systemctl start searchapi-backend
+sudo systemctl status searchapi-backend
+
+# View logs
+sudo tail -f /var/log/searchapi/backend.log`}
               </pre>
             </div>
 
             {/* Deploy Script */}
             <div className="glass-card p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold">Deployment Script</h3>
+                <h3 className="font-semibold">Full Deploy Script (Optional)</h3>
                 <Button 
                   variant="ghost" 
                   size="sm"
-                  onClick={() => copyToClipboard(buildScript, 'deploy')}
+                  onClick={() => copyToClipboard(deployScript, 'deploy')}
                 >
                   {copiedBlock === 'deploy' ? (
                     <Check className="w-4 h-4 text-primary" />
@@ -464,8 +616,11 @@ sudo systemctl status searchapi`}
                   )}
                 </Button>
               </div>
-              <pre className="bg-secondary/50 p-4 rounded-lg text-sm font-mono overflow-x-auto">
-                {buildScript}
+              <p className="text-muted-foreground text-sm mb-4">
+                For automated deployments from Git:
+              </p>
+              <pre className="bg-secondary/50 p-4 rounded-lg text-sm font-mono overflow-x-auto max-h-64 overflow-y-auto">
+                {deployScript}
               </pre>
             </div>
           </div>
@@ -477,34 +632,58 @@ sudo systemctl status searchapi`}
             <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
               <Shield className="w-5 h-5 text-primary" />
             </div>
-            <h2 className="text-2xl font-bold">Rate Limits & Caching</h2>
+            <h2 className="text-2xl font-bold">Caching & Performance</h2>
           </div>
 
           <div className="glass-card p-6">
             <ul className="space-y-3 text-muted-foreground">
-              <li className="flex items-start gap-3">
-                <Check className="w-5 h-5 text-primary mt-0.5" />
-                <span><strong>No rate limits</strong> - Free and unlimited usage</span>
+              <li className="flex items-start gap-2">
+                <span className="text-primary">•</span>
+                <span><strong>In-memory cache:</strong> Results cached for 1 hour per unique query+engine combination</span>
               </li>
-              <li className="flex items-start gap-3">
-                <Check className="w-5 h-5 text-primary mt-0.5" />
-                <span><strong>1-hour caching</strong> - Repeated queries return cached results instantly</span>
+              <li className="flex items-start gap-2">
+                <span className="text-primary">•</span>
+                <span><strong>No rate limits:</strong> You control the server - add rate limiting as needed</span>
               </li>
-              <li className="flex items-start gap-3">
-                <Check className="w-5 h-5 text-primary mt-0.5" />
-                <span><strong>No authentication</strong> - Just send requests, no API keys needed</span>
+              <li className="flex items-start gap-2">
+                <span className="text-primary">•</span>
+                <span><strong>Real results:</strong> Scrapes DuckDuckGo/Bing HTML pages for actual search results</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-primary">•</span>
+                <span><strong>No external APIs:</strong> Zero third-party dependencies or API keys</span>
               </li>
             </ul>
           </div>
         </section>
-      </main>
 
-      {/* Footer */}
-      <footer className="border-t border-border/50 py-8">
-        <div className="container mx-auto px-6 text-center text-muted-foreground">
-          <p>© 2024 SearchAPI. Open and free for everyone.</p>
-        </div>
-      </footer>
+        {/* Troubleshooting */}
+        <section className="mb-16">
+          <div className="glass-card p-6">
+            <h3 className="font-semibold mb-4">Troubleshooting</h3>
+            <div className="space-y-4 text-sm">
+              <div>
+                <p className="font-medium">Backend won't start?</p>
+                <pre className="bg-secondary/50 p-2 rounded mt-1 font-mono">
+                  sudo journalctl -u searchapi-backend -f
+                </pre>
+              </div>
+              <div>
+                <p className="font-medium">Frontend not loading?</p>
+                <pre className="bg-secondary/50 p-2 rounded mt-1 font-mono">
+                  sudo nginx -t && sudo tail -f /var/log/nginx/error.log
+                </pre>
+              </div>
+              <div>
+                <p className="font-medium">API returning errors?</p>
+                <pre className="bg-secondary/50 p-2 rounded mt-1 font-mono">
+                  curl http://localhost:3001/health
+                </pre>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
     </div>
   );
 };
