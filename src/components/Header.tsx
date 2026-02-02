@@ -1,11 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Zap } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
 
 const Header = () => {
-  const { user } = useAuth();
-
   return (
     <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
       <div className="container mx-auto px-6 h-16 flex items-center justify-between">
@@ -32,26 +29,11 @@ const Header = () => {
         </nav>
 
         <div className="flex items-center gap-4">
-          {user ? (
-            <Link to="/dashboard">
-              <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-                Dashboard
-              </Button>
-            </Link>
-          ) : (
-            <>
-              <Link to="/auth">
-                <Button variant="ghost" className="text-muted-foreground hover:text-foreground">
-                  Sign In
-                </Button>
-              </Link>
-              <Link to="/auth">
-                <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-                  Get API Key
-                </Button>
-              </Link>
-            </>
-          )}
+          <a href="#playground">
+            <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+              Try Free API
+            </Button>
+          </a>
         </div>
       </div>
     </header>

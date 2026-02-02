@@ -1,19 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-api-key',
 };
-
-// Hash function for API key validation
-async function hashApiKey(key: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(key);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
 
 // Generate hash for cache key
 async function generateCacheKey(query: string, engine: string): Promise<string> {
@@ -23,6 +13,9 @@ async function generateCacheKey(query: string, engine: string): Promise<string> 
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
+
+// Simple in-memory cache (resets on function restart)
+const cache = new Map<string, { data: any; expires: number }>();
 
 // Perform the actual search using AI Gateway
 async function performSearch(query: string, engine: string, location?: string): Promise<any> {
@@ -65,7 +58,7 @@ async function performSearch(query: string, engine: string, location?: string): 
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'google/gemini-2.0-flash',
+      model: 'google/gemini-2.5-flash',
       messages: [
         { role: 'user', content: prompt }
       ],
@@ -109,51 +102,7 @@ serve(async (req) => {
   const startTime = Date.now();
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error('Missing Supabase configuration');
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Get API key from header
-    const apiKey = req.headers.get('x-api-key') || req.headers.get('authorization')?.replace('Bearer ', '');
-    
-    if (!apiKey || !apiKey.startsWith('sk_live_')) {
-      return new Response(
-        JSON.stringify({ 
-          error: 'Invalid API key', 
-          message: 'Please provide a valid API key in the x-api-key header or Authorization: Bearer header' 
-        }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Validate API key
-    const keyHash = await hashApiKey(apiKey);
-    const { data: keyData, error: keyError } = await supabase
-      .from('api_keys')
-      .select('id, user_id, is_active')
-      .eq('key_hash', keyHash)
-      .single();
-
-    if (keyError || !keyData) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid API key' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (!keyData.is_active) {
-      return new Response(
-        JSON.stringify({ error: 'API key is disabled' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Parse request body
+    // Parse request body - no authentication required (free for all)
     let body: any = {};
     if (req.method === 'POST') {
       body = await req.json();
@@ -175,53 +124,36 @@ serve(async (req) => {
       );
     }
 
-    // Check cache first
+    // Check in-memory cache first
     const cacheKey = await generateCacheKey(query, engine);
-    const { data: cached } = await supabase
-      .from('search_cache')
-      .select('results')
-      .eq('query_hash', cacheKey)
-      .gt('expires_at', new Date().toISOString())
-      .single();
-
+    const now = Date.now();
+    const cached = cache.get(cacheKey);
+    
     let results;
-    if (cached) {
-      results = cached.results;
+    let fromCache = false;
+    
+    if (cached && cached.expires > now) {
+      results = cached.data;
+      fromCache = true;
     } else {
       // Perform fresh search
       results = await performSearch(query, engine, location);
 
-      // Cache results
-      await supabase
-        .from('search_cache')
-        .upsert({
-          query_hash: cacheKey,
-          query: query,
-          engine: engine,
-          results: results,
-          expires_at: new Date(Date.now() + 3600000).toISOString(), // 1 hour
-        }, { onConflict: 'query_hash' });
+      // Cache results for 1 hour
+      cache.set(cacheKey, {
+        data: results,
+        expires: now + 3600000, // 1 hour
+      });
+
+      // Clean old cache entries
+      for (const [key, value] of cache.entries()) {
+        if (value.expires < now) {
+          cache.delete(key);
+        }
+      }
     }
 
     const responseTime = Date.now() - startTime;
-
-    // Log usage
-    await supabase
-      .from('api_usage')
-      .insert({
-        api_key_id: keyData.id,
-        user_id: keyData.user_id,
-        endpoint: '/search',
-        query: query,
-        response_status: 200,
-        response_time_ms: responseTime,
-      });
-
-    // Update last used timestamp
-    await supabase
-      .from('api_keys')
-      .update({ last_used_at: new Date().toISOString() })
-      .eq('id', keyData.id);
 
     return new Response(
       JSON.stringify({
@@ -229,7 +161,7 @@ serve(async (req) => {
         search_metadata: {
           ...results.search_metadata,
           response_time_ms: responseTime,
-          cached: !!cached,
+          cached: fromCache,
         }
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
