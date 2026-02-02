@@ -97,11 +97,12 @@ const data = await response.json();`;
                 <label className="text-sm text-muted-foreground mb-2 block">API Key</label>
                 <Input
                   type="password"
-                  placeholder="sk_live_..."
+                  placeholder="sk_live_xxxxxxxxxxxxxxxx..."
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
                   className="bg-secondary border-border font-mono"
                 />
+                <p className="text-xs text-muted-foreground mt-1">Enter your full API key (48 chars)</p>
               </div>
               <div className="md:col-span-1">
                 <label className="text-sm text-muted-foreground mb-2 block">Search Query</label>
