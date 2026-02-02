@@ -99,6 +99,57 @@ async function searchDuckDuckGo(query) {
   return results;
 }
 
+// Google search scraper (main engine)
+async function searchGoogle(query) {
+  const url = `https://www.google.com/search?q=${encodeURIComponent(query)}&hl=en`;
+  
+  const response = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.5',
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`Google returned ${response.status}`);
+  }
+
+  const html = await response.text();
+  const $ = cheerio.load(html);
+  const results = [];
+
+  // Google search result selectors
+  $('div.g').each((index, element) => {
+    if (index >= 10) return false;
+
+    const titleEl = $(element).find('h3').first();
+    const linkEl = $(element).find('a').first();
+    const snippetEl = $(element).find('div[data-sncf]').first() || $(element).find('.VwiC3b').first();
+    
+    const title = titleEl.text().trim();
+    const link = linkEl.attr('href');
+    const snippet = snippetEl.text().trim() || $(element).find('span').slice(2).first().text().trim();
+
+    if (title && link && link.startsWith('http')) {
+      let domain = 'unknown';
+      try {
+        domain = new URL(link).hostname;
+      } catch (e) {}
+
+      results.push({
+        position: results.length + 1,
+        title,
+        link,
+        snippet: snippet || 'No description available',
+        domain
+      });
+    }
+  });
+
+  return results;
+}
+
 // Bing search scraper as fallback
 async function searchBing(query) {
   const url = `https://www.bing.com/search?q=${encodeURIComponent(query)}&setlang=en`;
@@ -184,9 +235,11 @@ app.post('/search', async (req, res) => {
 
     if (searchEngine === 'bing') {
       results = await searchBing(query);
-    } else {
-      // Default to DuckDuckGo
+    } else if (searchEngine === 'duckduckgo') {
       results = await searchDuckDuckGo(query);
+    } else {
+      // Default to Google (main engine)
+      results = await searchGoogle(query);
     }
 
     // Cache results
@@ -263,8 +316,10 @@ app.get('/search', async (req, res) => {
     let results;
     if (engine.toLowerCase() === 'bing') {
       results = await searchBing(query);
-    } else {
+    } else if (engine.toLowerCase() === 'duckduckgo') {
       results = await searchDuckDuckGo(query);
+    } else {
+      results = await searchGoogle(query);
     }
 
     cache.set(cacheKey, {

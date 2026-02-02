@@ -1,6 +1,7 @@
-import { Search, Globe } from "lucide-react";
+import { Search, Globe, Chrome } from "lucide-react";
 
 const engines = [
+  { name: "Google", icon: Chrome, color: "text-green-400", main: true },
   { name: "DuckDuckGo", icon: Search, color: "text-orange-400" },
   { name: "Bing", icon: Globe, color: "text-blue-400" },
 ];
@@ -18,13 +19,16 @@ const SearchEngines = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-4 max-w-md mx-auto">
+        <div className="grid grid-cols-3 gap-4 max-w-lg mx-auto">
           {engines.map((engine, index) => (
             <div
               key={engine.name}
-              className="glass-card p-6 text-center hover:border-primary/50 transition-all duration-300 group cursor-pointer"
+              className={`glass-card p-6 text-center hover:border-primary/50 transition-all duration-300 group cursor-pointer ${engine.main ? 'ring-2 ring-primary/50' : ''}`}
               style={{ animationDelay: `${index * 0.1}s` }}
             >
+              {engine.main && (
+                <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full">Main</span>
+              )}
               <engine.icon className={`w-10 h-10 mx-auto mb-3 ${engine.color} group-hover:scale-110 transition-transform`} />
               <span className="text-sm font-medium">{engine.name}</span>
             </div>
