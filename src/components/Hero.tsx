@@ -1,7 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Play } from "lucide-react";
+import { Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Hero = () => {
+  const { user } = useAuth();
+
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
       {/* Background glows */}
@@ -15,32 +19,36 @@ const Hero = () => {
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-border/50 bg-secondary/50 mb-8 animate-fade-in">
             <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
             <span className="text-sm text-muted-foreground">
-              Trusted by 50,000+ developers worldwide
+              Powered by AI • No rate limits
             </span>
           </div>
 
           {/* Headline */}
           <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight animate-fade-in" style={{ animationDelay: "0.1s" }}>
-            Search Engine Results
+            Your Own Search
             <br />
-            <span className="glow-text">API for Developers</span>
+            <span className="glow-text">API Platform</span>
           </h1>
 
           {/* Subheadline */}
           <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto animate-fade-in" style={{ animationDelay: "0.2s" }}>
-            Scrape and parse search results from Google, Bing, Yahoo, and 20+ search engines. 
-            Real-time data with enterprise-grade reliability.
+            Build and deploy your own search API. Generate API keys, track usage, 
+            and serve real-time search results to your applications.
           </p>
 
           {/* CTAs */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16 animate-fade-in" style={{ animationDelay: "0.3s" }}>
-            <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 h-14 text-lg">
-              Start Free Trial
-              <ArrowRight className="ml-2 w-5 h-5" />
-            </Button>
-            <Button size="lg" variant="outline" className="border-border hover:bg-secondary px-8 h-14 text-lg">
-              <Play className="mr-2 w-5 h-5" />
-              Watch Demo
+            <Link to={user ? "/dashboard" : "/auth"}>
+              <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 h-14 text-lg">
+                {user ? "Go to Dashboard" : "Get Started Free"}
+                <ArrowRight className="ml-2 w-5 h-5" />
+              </Button>
+            </Link>
+            <Button size="lg" variant="outline" className="border-border hover:bg-secondary px-8 h-14 text-lg" asChild>
+              <a href="#docs">
+                <Play className="mr-2 w-5 h-5" />
+                Try Playground
+              </a>
             </Button>
           </div>
 
@@ -54,10 +62,10 @@ const Hero = () => {
             </div>
             <pre className="code-block overflow-x-auto">
               <code className="text-sm">
-{`const response = await fetch('https://api.searchapi.io/search', {
+{`const response = await fetch('https://your-api.searchapi.io/search', {
   method: 'POST',
   headers: {
-    'Authorization': 'Bearer YOUR_API_KEY',
+    'x-api-key': 'sk_live_your_api_key_here',
     'Content-Type': 'application/json'
   },
   body: JSON.stringify({

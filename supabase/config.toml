@@ -1,1 +1,10 @@
 project_id = "fcemwlfmgszodrprvpzu"
+
+[functions.api-keys]
+verify_jwt = false
+
+[functions.search]
+verify_jwt = false
+
+[functions.usage]
+verify_jwt = false

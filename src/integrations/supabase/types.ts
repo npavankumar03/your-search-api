@@ -14,7 +14,110 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      api_keys: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          key_hash: string
+          key_prefix: string
+          last_used_at: string | null
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          key_hash: string
+          key_prefix: string
+          last_used_at?: string | null
+          name?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          key_hash?: string
+          key_prefix?: string
+          last_used_at?: string | null
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      api_usage: {
+        Row: {
+          api_key_id: string
+          created_at: string
+          endpoint: string
+          id: string
+          query: string | null
+          response_status: number
+          response_time_ms: number
+          user_id: string
+        }
+        Insert: {
+          api_key_id: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          query?: string | null
+          response_status: number
+          response_time_ms: number
+          user_id: string
+        }
+        Update: {
+          api_key_id?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          query?: string | null
+          response_status?: number
+          response_time_ms?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_usage_api_key_id_fkey"
+            columns: ["api_key_id"]
+            isOneToOne: false
+            referencedRelation: "api_keys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      search_cache: {
+        Row: {
+          created_at: string
+          engine: string
+          expires_at: string
+          id: string
+          query: string
+          query_hash: string
+          results: Json
+        }
+        Insert: {
+          created_at?: string
+          engine?: string
+          expires_at?: string
+          id?: string
+          query: string
+          query_hash: string
+          results: Json
+        }
+        Update: {
+          created_at?: string
+          engine?: string
+          expires_at?: string
+          id?: string
+          query?: string
+          query_hash?: string
+          results?: Json
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
