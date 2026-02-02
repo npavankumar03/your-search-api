@@ -3,11 +3,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Play, Copy, Check, Loader2 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+
+// API URL - uses environment variable or defaults to localhost for development
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 const Playground = () => {
   const [query, setQuery] = useState('best coffee shops in NYC');
-  const [engine, setEngine] = useState('google');
+  const [engine, setEngine] = useState('duckduckgo');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
@@ -24,12 +26,20 @@ const Playground = () => {
     setResult(null);
 
     try {
-      const { data, error: fnError } = await supabase.functions.invoke('search', {
+      const response = await fetch(`${API_URL}/search`, {
         method: 'POST',
-        body: { query, engine },
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query, engine }),
       });
 
-      if (fnError) throw fnError;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Search failed');
+      }
+
+      const data = await response.json();
       setResult(data);
     } catch (err: any) {
       setError(err.message || 'Search failed');
@@ -39,7 +49,7 @@ const Playground = () => {
   };
 
   const copyCode = () => {
-    const code = `curl -X POST "${import.meta.env.VITE_SUPABASE_URL}/functions/v1/search" \\
+    const code = `curl -X POST "${API_URL}/search" \\
   -H "Content-Type: application/json" \\
   -d '{"query": "${query}", "engine": "${engine}"}'`;
     
@@ -80,10 +90,9 @@ const Playground = () => {
                   <SelectTrigger className="bg-secondary border-border">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="google">Google</SelectItem>
+                <SelectContent>
+                    <SelectItem value="duckduckgo">DuckDuckGo</SelectItem>
                     <SelectItem value="bing">Bing</SelectItem>
-                    <SelectItem value="yahoo">Yahoo</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
