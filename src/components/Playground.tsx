@@ -9,7 +9,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 const Playground = () => {
   const [query, setQuery] = useState('best coffee shops in NYC');
-  const [engine, setEngine] = useState('duckduckgo');
+  const [engine, setEngine] = useState('google');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
@@ -90,7 +90,8 @@ const Playground = () => {
                   <SelectTrigger className="bg-secondary border-border">
                     <SelectValue />
                   </SelectTrigger>
-                <SelectContent>
+                  <SelectContent>
+                    <SelectItem value="google">Google</SelectItem>
                     <SelectItem value="duckduckgo">DuckDuckGo</SelectItem>
                     <SelectItem value="bing">Bing</SelectItem>
                   </SelectContent>

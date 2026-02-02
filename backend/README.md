@@ -100,5 +100,6 @@ WantedBy=multi-user.target
 
 ## Supported Search Engines
 
-- `duckduckgo` (default) - Privacy-focused, no tracking
+- `google` (default) - Main search engine
+- `duckduckgo` - Privacy-focused, no tracking
 - `bing` - Microsoft search engine
