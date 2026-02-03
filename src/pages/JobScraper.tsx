@@ -16,6 +16,9 @@ const JobScraper = () => {
     platforms: string[];
     limit: number;
     filterDuplicates: boolean;
+    dedupeTableId: string | null;
+    saveToTableId: string | null;
+    usaOnly: boolean;
   }) => {
     await scrape(options);
   };
