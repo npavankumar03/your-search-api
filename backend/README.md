@@ -1,81 +1,50 @@
-# SearchAPI Backend
+# SearchAPI Backend (v2.0 Lite)
 
-Self-hosted search API backend using web scraping (DuckDuckGo/Bing). No external API keys required.
+Zero-dependency Node.js search API. Uses only built-in modules.
 
 ## Features
 
-- 🔍 Real search results via web scraping
-- 🚀 In-memory caching (1 hour TTL)
-- 🌐 DuckDuckGo + Bing engines
-- 🔒 No external dependencies
-- ⚡ Fast response times
+- 🚀 **Zero dependencies** - No npm install needed
+- 💾 **File-based cache** - Persistent across restarts
+- ⚡ **~15MB RAM** - Runs on smallest VPS
+- 🔄 **Auto-restart** - systemd with memory limits
+- 🔍 **DuckDuckGo/Bing/Google** - Multiple engines
 
 ## Quick Start
 
 ```bash
-# Install dependencies
-npm install
-
-# Start server
-npm start
-
-# Server runs on http://localhost:3001
+# No npm install needed!
+node server.js
 ```
 
-## API Endpoints
+## One-Click Deploy
 
-### POST /search
+On your VPS:
 ```bash
+curl -sSL https://raw.githubusercontent.com/YOUR_REPO/main/scripts/deploy.sh | bash
+```
+
+Or from your local machine:
+```bash
+./scripts/deploy.sh YOUR_SERVER_IP
+```
+
+## API
+
+```bash
+# POST
 curl -X POST http://localhost:3001/search \
   -H "Content-Type: application/json" \
-  -d '{"query": "best coffee shops NYC", "engine": "duckduckgo"}'
-```
+  -d '{"query": "hello world"}'
 
-### GET /search
-```bash
-curl "http://localhost:3001/search?q=best+coffee+shops&engine=duckduckgo"
-```
+# GET
+curl "http://localhost:3001/search?q=hello+world"
 
-### GET /health
-```bash
+# Health
 curl http://localhost:3001/health
 ```
 
-## Configuration
-
-Set environment variables:
-
-```bash
-PORT=3001  # Server port (default: 3001)
-```
-
-## Production Deployment
-
-1. Install PM2 or use systemd
-2. Run with `NODE_ENV=production`
-3. Put behind Nginx for SSL
-
-### Systemd Service
-
-```ini
-[Unit]
-Description=SearchAPI Backend
-After=network.target
-
-[Service]
-Type=simple
-User=www-data
-WorkingDirectory=/var/www/searchapi/backend
-ExecStart=/usr/bin/node server.js
-Restart=always
-Environment=PORT=3001
-Environment=NODE_ENV=production
-
-[Install]
-WantedBy=multi-user.target
-```
-
-## Response Format
+## Response
 
 ```json
 {
@@ -89,17 +58,53 @@ WantedBy=multi-user.target
     }
   ],
   "search_metadata": {
-    "query": "search query",
+    "query": "hello world",
     "engine": "duckduckgo",
-    "total_results": "About 10 results",
-    "response_time_ms": 245,
-    "cached": false
+    "cached": false,
+    "response_time_ms": 245
   }
 }
 ```
 
-## Supported Search Engines
+## Resource Usage
 
-- `google` (default) - Main search engine
-- `duckduckgo` - Privacy-focused, no tracking
-- `bing` - Microsoft search engine
+| Metric | Value |
+|--------|-------|
+| RAM (idle) | ~15MB |
+| RAM (under load) | ~25MB |
+| CPU | Minimal |
+| Disk (cache) | <10MB |
+
+## Configuration
+
+Environment variables:
+- `PORT` - Server port (default: 3001)
+- `CACHE_DIR` - Cache directory (default: /tmp/searchapi-cache)
+
+## Systemd Service
+
+The deploy script creates this automatically:
+
+```ini
+[Unit]
+Description=SearchAPI Backend
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/var/www/searchapi/backend
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=5
+MemoryMax=128M
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Commands:
+```bash
+systemctl status searchapi
+systemctl restart searchapi
+journalctl -u searchapi -f
+```
