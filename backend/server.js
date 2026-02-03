@@ -1,376 +1,358 @@
-const express = require('express');
-const cors = require('cors');
-const fetch = require('node-fetch');
-const cheerio = require('cheerio');
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
 const crypto = require('crypto');
 
-const app = express();
 const PORT = process.env.PORT || 3001;
-
-// CORS - allow all origins for development, restrict in production if needed
-app.use(cors({
-  origin: '*',
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
-
-app.use(express.json());
-
-// In-memory cache
-const cache = new Map();
+const CACHE_DIR = process.env.CACHE_DIR || '/tmp/searchapi-cache';
 const CACHE_TTL = 3600000; // 1 hour
+const MAX_CACHE_SIZE = 100; // Max cached queries
 
-// Generate cache key
+// Ensure cache directory exists
+if (!fs.existsSync(CACHE_DIR)) {
+  fs.mkdirSync(CACHE_DIR, { recursive: true });
+}
+
+// Simple LRU cache index
+let cacheIndex = [];
+
 function generateCacheKey(query, engine) {
-  return crypto.createHash('sha256').update(`${engine}:${query.toLowerCase().trim()}`).digest('hex');
+  return crypto.createHash('md5').update(`${engine}:${query.toLowerCase().trim()}`).digest('hex');
 }
 
-// Clean expired cache entries
-function cleanCache() {
-  const now = Date.now();
-  for (const [key, value] of cache.entries()) {
-    if (value.expires < now) {
-      cache.delete(key);
-    }
-  }
+function getCachePath(key) {
+  return path.join(CACHE_DIR, `${key}.json`);
 }
 
-// DuckDuckGo HTML search scraper
-async function searchDuckDuckGo(query) {
-  const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
-  
-  const response = await fetch(url, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      'Accept-Language': 'en-US,en;q=0.5',
-    }
-  });
-
-  if (!response.ok) {
-    throw new Error(`DuckDuckGo returned ${response.status}`);
-  }
-
-  const html = await response.text();
-  const $ = cheerio.load(html);
-  const results = [];
-
-  $('.result').each((index, element) => {
-    if (index >= 10) return false; // Limit to 10 results
-
-    const titleEl = $(element).find('.result__a');
-    const snippetEl = $(element).find('.result__snippet');
-    const linkEl = $(element).find('.result__url');
-
-    const title = titleEl.text().trim();
-    const link = titleEl.attr('href');
-    const snippet = snippetEl.text().trim();
-    const displayUrl = linkEl.text().trim();
-
-    // Extract actual URL from DuckDuckGo redirect
-    let actualUrl = link;
-    if (link && link.includes('uddg=')) {
-      try {
-        const urlParams = new URLSearchParams(link.split('?')[1]);
-        actualUrl = decodeURIComponent(urlParams.get('uddg') || link);
-      } catch (e) {
-        actualUrl = link;
-      }
-    }
-
-    if (title && actualUrl) {
-      let domain = displayUrl;
-      try {
-        domain = new URL(actualUrl).hostname;
-      } catch (e) {
-        domain = displayUrl || 'unknown';
-      }
-
-      results.push({
-        position: results.length + 1,
-        title,
-        link: actualUrl,
-        snippet: snippet || 'No description available',
-        domain
-      });
-    }
-  });
-
-  return results;
-}
-
-// Google search scraper (main engine)
-async function searchGoogle(query) {
-  const url = `https://www.google.com/search?q=${encodeURIComponent(query)}&hl=en`;
-  
-  const response = await fetch(url, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      'Accept-Language': 'en-US,en;q=0.5',
-    }
-  });
-
-  if (!response.ok) {
-    throw new Error(`Google returned ${response.status}`);
-  }
-
-  const html = await response.text();
-  const $ = cheerio.load(html);
-  const results = [];
-
-  // Google search result selectors
-  $('div.g').each((index, element) => {
-    if (index >= 10) return false;
-
-    const titleEl = $(element).find('h3').first();
-    const linkEl = $(element).find('a').first();
-    const snippetEl = $(element).find('div[data-sncf]').first() || $(element).find('.VwiC3b').first();
-    
-    const title = titleEl.text().trim();
-    const link = linkEl.attr('href');
-    const snippet = snippetEl.text().trim() || $(element).find('span').slice(2).first().text().trim();
-
-    if (title && link && link.startsWith('http')) {
-      let domain = 'unknown';
-      try {
-        domain = new URL(link).hostname;
-      } catch (e) {}
-
-      results.push({
-        position: results.length + 1,
-        title,
-        link,
-        snippet: snippet || 'No description available',
-        domain
-      });
-    }
-  });
-
-  return results;
-}
-
-// Bing search scraper as fallback
-async function searchBing(query) {
-  const url = `https://www.bing.com/search?q=${encodeURIComponent(query)}&setlang=en`;
-  
-  const response = await fetch(url, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      'Accept-Language': 'en-US,en;q=0.5',
-    }
-  });
-
-  if (!response.ok) {
-    throw new Error(`Bing returned ${response.status}`);
-  }
-
-  const html = await response.text();
-  const $ = cheerio.load(html);
-  const results = [];
-
-  $('.b_algo').each((index, element) => {
-    if (index >= 10) return false;
-
-    const titleEl = $(element).find('h2 a');
-    const snippetEl = $(element).find('.b_caption p');
-    
-    const title = titleEl.text().trim();
-    const link = titleEl.attr('href');
-    const snippet = snippetEl.text().trim();
-
-    if (title && link) {
-      let domain = 'unknown';
-      try {
-        domain = new URL(link).hostname;
-      } catch (e) {}
-
-      results.push({
-        position: results.length + 1,
-        title,
-        link,
-        snippet: snippet || 'No description available',
-        domain
-      });
-    }
-  });
-
-  return results;
-}
-
-// Main search endpoint
-app.post('/search', async (req, res) => {
-  const startTime = Date.now();
-
+function getFromCache(key) {
+  const filePath = getCachePath(key);
   try {
-    const { query, engine = 'duckduckgo', location } = req.body;
-
-    if (!query) {
-      return res.status(400).json({ error: 'Missing query parameter' });
-    }
-
-    // Check cache
-    const cacheKey = generateCacheKey(query, engine);
-    const cached = cache.get(cacheKey);
-    const now = Date.now();
-
-    if (cached && cached.expires > now) {
-      const responseTime = Date.now() - startTime;
-      return res.json({
-        organic_results: cached.data,
-        search_metadata: {
-          query,
-          engine,
-          total_results: `About ${cached.data.length} results`,
-          response_time_ms: responseTime,
-          cached: true
-        }
-      });
-    }
-
-    // Perform search based on engine
-    let results;
-    const searchEngine = engine.toLowerCase();
-
-    if (searchEngine === 'bing') {
-      results = await searchBing(query);
-    } else if (searchEngine === 'duckduckgo') {
-      results = await searchDuckDuckGo(query);
-    } else {
-      // Default to Google (main engine)
-      results = await searchGoogle(query);
-    }
-
-    // Cache results
-    cache.set(cacheKey, {
-      data: results,
-      expires: now + CACHE_TTL
-    });
-
-    // Clean old cache entries periodically
-    if (Math.random() < 0.1) {
-      cleanCache();
-    }
-
-    const responseTime = Date.now() - startTime;
-
-    res.json({
-      organic_results: results,
-      search_metadata: {
-        query,
-        engine: searchEngine,
-        total_results: `About ${results.length} results`,
-        response_time_ms: responseTime,
-        cached: false
+    if (fs.existsSync(filePath)) {
+      const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      if (data.expires > Date.now()) {
+        // Move to front of LRU
+        cacheIndex = cacheIndex.filter(k => k !== key);
+        cacheIndex.unshift(key);
+        return data.results;
       }
-    });
+      // Expired, delete
+      fs.unlinkSync(filePath);
+    }
+  } catch (e) {}
+  return null;
+}
 
-  } catch (error) {
-    const responseTime = Date.now() - startTime;
-    console.error('Search error:', error.message);
-
-    res.status(500).json({
-      error: error.message || 'Search failed',
-      response_time_ms: responseTime
-    });
+function saveToCache(key, results) {
+  // LRU eviction
+  while (cacheIndex.length >= MAX_CACHE_SIZE) {
+    const oldKey = cacheIndex.pop();
+    try { fs.unlinkSync(getCachePath(oldKey)); } catch (e) {}
   }
-});
+  
+  const filePath = getCachePath(key);
+  const data = { results, expires: Date.now() + CACHE_TTL };
+  fs.writeFileSync(filePath, JSON.stringify(data));
+  cacheIndex.unshift(key);
+}
 
-// GET endpoint for convenience
-app.get('/search', async (req, res) => {
-  req.body = {
-    query: req.query.q || req.query.query,
-    engine: req.query.engine || 'duckduckgo',
-    location: req.query.location
+// Lightweight HTML fetch with native http/https
+function fetchHTML(url) {
+  return new Promise((resolve, reject) => {
+    const client = url.startsWith('https') ? require('https') : require('http');
+    const options = {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'text/html',
+        'Accept-Language': 'en-US,en;q=0.5',
+      },
+      timeout: 10000
+    };
+    
+    const req = client.get(url, options, (res) => {
+      // Handle redirects
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        return fetchHTML(res.headers.location).then(resolve).catch(reject);
+      }
+      
+      if (res.statusCode !== 200) {
+        return reject(new Error(`HTTP ${res.statusCode}`));
+      }
+      
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => resolve(data));
+    });
+    
+    req.on('error', reject);
+    req.on('timeout', () => { req.destroy(); reject(new Error('Timeout')); });
+  });
+}
+
+// Fast regex-based HTML parsing (no cheerio dependency)
+function extractDuckDuckGoResults(html) {
+  const results = [];
+  // Match result blocks
+  const resultRegex = /<a[^>]*class="result__a"[^>]*href="([^"]*)"[^>]*>([^<]*)<\/a>[\s\S]*?<a[^>]*class="result__snippet"[^>]*>([^<]*)/gi;
+  const snippetRegex = /<a[^>]*class="result__snippet"[^>]*>([\s\S]*?)<\/a>/gi;
+  
+  // Alternative approach: split by result divs
+  const blocks = html.split(/class="result\s/i).slice(1, 11);
+  
+  for (const block of blocks) {
+    try {
+      // Extract URL
+      const urlMatch = block.match(/class="result__a"[^>]*href="([^"]*)"/i);
+      // Extract title
+      const titleMatch = block.match(/class="result__a"[^>]*>([^<]*)/i);
+      // Extract snippet
+      const snippetMatch = block.match(/class="result__snippet"[^>]*>([\s\S]*?)<\/a>/i);
+      
+      if (urlMatch && titleMatch) {
+        let url = urlMatch[1];
+        // Decode DDG redirect URL
+        if (url.includes('uddg=')) {
+          const uddg = url.match(/uddg=([^&]*)/);
+          if (uddg) url = decodeURIComponent(uddg[1]);
+        }
+        
+        const title = titleMatch[1].replace(/<[^>]*>/g, '').trim();
+        const snippet = snippetMatch ? snippetMatch[1].replace(/<[^>]*>/g, '').trim() : '';
+        
+        if (title && url.startsWith('http')) {
+          let domain = 'unknown';
+          try { domain = new URL(url).hostname; } catch (e) {}
+          
+          results.push({
+            position: results.length + 1,
+            title,
+            link: url,
+            snippet: snippet || 'No description',
+            domain
+          });
+        }
+      }
+    } catch (e) {}
+  }
+  return results;
+}
+
+function extractBingResults(html) {
+  const results = [];
+  const blocks = html.split(/class="b_algo"/i).slice(1, 11);
+  
+  for (const block of blocks) {
+    try {
+      const urlMatch = block.match(/<a[^>]*href="(https?:\/\/[^"]*)"/i);
+      const titleMatch = block.match(/<a[^>]*>([^<]*)<\/a>/i);
+      const snippetMatch = block.match(/<p[^>]*>([\s\S]*?)<\/p>/i);
+      
+      if (urlMatch && titleMatch) {
+        const title = titleMatch[1].replace(/<[^>]*>/g, '').trim();
+        const snippet = snippetMatch ? snippetMatch[1].replace(/<[^>]*>/g, '').trim() : '';
+        const url = urlMatch[1];
+        
+        let domain = 'unknown';
+        try { domain = new URL(url).hostname; } catch (e) {}
+        
+        results.push({
+          position: results.length + 1,
+          title,
+          link: url,
+          snippet: snippet || 'No description',
+          domain
+        });
+      }
+    } catch (e) {}
+  }
+  return results;
+}
+
+function extractGoogleResults(html) {
+  const results = [];
+  const blocks = html.split(/<div class="g"/i).slice(1, 11);
+  
+  for (const block of blocks) {
+    try {
+      const urlMatch = block.match(/<a[^>]*href="(https?:\/\/[^"]*)"/i);
+      const titleMatch = block.match(/<h3[^>]*>([^<]*)<\/h3>/i);
+      const snippetMatch = block.match(/class="VwiC3b[^"]*"[^>]*>([\s\S]*?)<\/span>/i);
+      
+      if (urlMatch && titleMatch) {
+        const title = titleMatch[1].replace(/<[^>]*>/g, '').trim();
+        const snippet = snippetMatch ? snippetMatch[1].replace(/<[^>]*>/g, '').trim() : '';
+        const url = urlMatch[1];
+        
+        let domain = 'unknown';
+        try { domain = new URL(url).hostname; } catch (e) {}
+        
+        results.push({
+          position: results.length + 1,
+          title,
+          link: url,
+          snippet: snippet || 'No description',
+          domain
+        });
+      }
+    } catch (e) {}
+  }
+  return results;
+}
+
+async function search(query, engine = 'duckduckgo') {
+  const urls = {
+    duckduckgo: `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`,
+    bing: `https://www.bing.com/search?q=${encodeURIComponent(query)}&setlang=en`,
+    google: `https://www.google.com/search?q=${encodeURIComponent(query)}&hl=en`
   };
+  
+  const extractors = {
+    duckduckgo: extractDuckDuckGoResults,
+    bing: extractBingResults,
+    google: extractGoogleResults
+  };
+  
+  const url = urls[engine] || urls.duckduckgo;
+  const extractor = extractors[engine] || extractors.duckduckgo;
+  
+  const html = await fetchHTML(url);
+  return extractor(html);
+}
 
-  // Forward to POST handler
-  const startTime = Date.now();
-
-  try {
-    const { query, engine = 'duckduckgo' } = req.body;
-
-    if (!query) {
-      return res.status(400).json({ error: 'Missing query parameter' });
-    }
-
-    const cacheKey = generateCacheKey(query, engine);
-    const cached = cache.get(cacheKey);
-    const now = Date.now();
-
-    if (cached && cached.expires > now) {
-      const responseTime = Date.now() - startTime;
-      return res.json({
-        organic_results: cached.data,
-        search_metadata: {
-          query,
-          engine,
-          total_results: `About ${cached.data.length} results`,
-          response_time_ms: responseTime,
-          cached: true
-        }
-      });
-    }
-
-    let results;
-    if (engine.toLowerCase() === 'bing') {
-      results = await searchBing(query);
-    } else if (engine.toLowerCase() === 'duckduckgo') {
-      results = await searchDuckDuckGo(query);
-    } else {
-      results = await searchGoogle(query);
-    }
-
-    cache.set(cacheKey, {
-      data: results,
-      expires: now + CACHE_TTL
+// Parse JSON body
+function parseBody(req) {
+  return new Promise((resolve) => {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => {
+      try { resolve(JSON.parse(body)); }
+      catch (e) { resolve({}); }
     });
+  });
+}
 
-    const responseTime = Date.now() - startTime;
-
-    res.json({
-      organic_results: results,
-      search_metadata: {
-        query,
-        engine: engine.toLowerCase(),
-        total_results: `About ${results.length} results`,
-        response_time_ms: responseTime,
-        cached: false
-      }
-    });
-
-  } catch (error) {
-    const responseTime = Date.now() - startTime;
-    console.error('Search error:', error.message);
-    res.status(500).json({
-      error: error.message || 'Search failed',
-      response_time_ms: responseTime
+// Parse query string
+function parseQuery(url) {
+  const params = {};
+  const queryString = url.split('?')[1];
+  if (queryString) {
+    queryString.split('&').forEach(pair => {
+      const [key, value] = pair.split('=');
+      params[decodeURIComponent(key)] = decodeURIComponent(value || '');
     });
   }
-});
+  return params;
+}
 
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', uptime: process.uptime() });
-});
-
-// Root endpoint
-app.get('/', (req, res) => {
-  res.json({
-    name: 'SearchAPI',
-    version: '1.0.0',
-    endpoints: {
-      search: 'POST /search',
-      health: 'GET /health'
+// Main HTTP server (no Express overhead)
+const server = http.createServer(async (req, res) => {
+  // CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Content-Type', 'application/json');
+  
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    return res.end();
+  }
+  
+  const url = req.url.split('?')[0];
+  
+  // Health check
+  if (url === '/health') {
+    const memUsage = process.memoryUsage();
+    return res.end(JSON.stringify({
+      status: 'ok',
+      uptime: Math.floor(process.uptime()),
+      memory_mb: Math.round(memUsage.heapUsed / 1024 / 1024),
+      cache_size: cacheIndex.length
+    }));
+  }
+  
+  // Root endpoint
+  if (url === '/' && req.method === 'GET') {
+    return res.end(JSON.stringify({
+      name: 'SearchAPI',
+      version: '2.0.0-lite',
+      endpoints: { search: 'POST /search', health: 'GET /health' }
+    }));
+  }
+  
+  // Search endpoint
+  if (url === '/search') {
+    const startTime = Date.now();
+    
+    try {
+      let query, engine;
+      
+      if (req.method === 'POST') {
+        const body = await parseBody(req);
+        query = body.query;
+        engine = body.engine || 'duckduckgo';
+      } else {
+        const params = parseQuery(req.url);
+        query = params.q || params.query;
+        engine = params.engine || 'duckduckgo';
+      }
+      
+      if (!query) {
+        res.writeHead(400);
+        return res.end(JSON.stringify({ error: 'Missing query parameter' }));
+      }
+      
+      engine = engine.toLowerCase();
+      const cacheKey = generateCacheKey(query, engine);
+      
+      // Check cache
+      const cached = getFromCache(cacheKey);
+      if (cached) {
+        return res.end(JSON.stringify({
+          organic_results: cached,
+          search_metadata: {
+            query, engine,
+            total_results: `About ${cached.length} results`,
+            response_time_ms: Date.now() - startTime,
+            cached: true
+          }
+        }));
+      }
+      
+      // Perform search
+      const results = await search(query, engine);
+      saveToCache(cacheKey, results);
+      
+      return res.end(JSON.stringify({
+        organic_results: results,
+        search_metadata: {
+          query, engine,
+          total_results: `About ${results.length} results`,
+          response_time_ms: Date.now() - startTime,
+          cached: false
+        }
+      }));
+      
+    } catch (error) {
+      res.writeHead(500);
+      return res.end(JSON.stringify({
+        error: error.message || 'Search failed',
+        response_time_ms: Date.now() - startTime
+      }));
     }
-  });
+  }
+  
+  // 404
+  res.writeHead(404);
+  res.end(JSON.stringify({ error: 'Not found' }));
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`SearchAPI backend running on http://0.0.0.0:${PORT}`);
-  console.log(`Endpoints:`);
-  console.log(`  POST /search - Search with body { query, engine }`);
-  console.log(`  GET /search?q=query&engine=duckduckgo`);
-  console.log(`  GET /health - Health check`);
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`SearchAPI v2.0-lite running on port ${PORT}`);
+  console.log(`Memory: ~${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
+  console.log(`Cache: ${CACHE_DIR} (max ${MAX_CACHE_SIZE} entries)`);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('Shutting down...');
+  server.close(() => process.exit(0));
 });

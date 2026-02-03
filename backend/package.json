@@ -1,16 +1,14 @@
 {
   "name": "searchapi-backend",
-  "version": "1.0.0",
-  "description": "Self-hosted SearchAPI backend with web scraping",
+  "version": "2.0.0",
+  "description": "Lightweight self-hosted SearchAPI - no dependencies",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js"
   },
-  "dependencies": {
-    "express": "^4.18.2",
-    "cors": "^2.8.5",
-    "cheerio": "^1.0.0-rc.12",
-    "node-fetch": "^2.7.0"
-  }
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {}
 }
