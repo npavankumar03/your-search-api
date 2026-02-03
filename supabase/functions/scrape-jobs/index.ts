@@ -84,69 +84,480 @@ function isUSALocation(location: string | null | undefined): boolean {
   return usaPatterns.some(pattern => loc.includes(pattern));
 }
 
+// ===================== COMPANY LISTS FROM CSV =====================
+
+// Ashby companies (2000+ from CSV)
+const ASHBY_COMPANIES = [
+  'openai', 'kraken.com', 'flock-safety', 'perplexity', 'oneapp', 'notion', 'tenex', '1password',
+  'whatnot', 'scribd', 'hims-and-hers', 'lilt', 'serverobotics', 'evenup', 'vanta', 'ramp',
+  'socure', 'skydio', 'mach', 'confluent', 'radai', 'bjakcareer', 'onebrief', 'airapps',
+  'dandy', 'quora', 'elevenlabs', 'rula', 'suno', 'writer', 'zip', 'bestow', 'clickup',
+  'crusoe', 'hadrian-automation', 'rain', 'abridge', 'hippocratic-ai', 'lambda', 'meridianlink',
+  'decagon', 'kikoff', 'netic', 'oscilar', 'sentilink', 'pear', 'permitflow', 'solace',
+  'chainlink-labs', 'cohere', 'quartermaster', 'auditboard', 'camunda', 'commure', 'replit',
+  'docker', 'lime', 'rapdev', 'sardine', 'wealth-com', 'assembledhq', 'deepgram', 'harvey',
+  'meter', 'tessera-labs', 'candidhealth', 'roboflow', 'upside', 'atlan', 'baseten', 'betterup',
+  'hockeystack', 'tools-for-humanity', 'webai', 'airwallex', 'arbiter-ai', 'cobot', 'delinea',
+  'flosports', 'g2i', 'handshake', 'ontic', 'par-technology', 'patreon', 'real', 'eightsleep',
+  'goodparty', 'reflect-orbital', 'second-nature', 'span', 'truelogic', 'weave', 'yobi',
+  'anglehealth', 'bayesianhealth', 'canals', 'claylabs', 'growthx-ai', 'hoplynk', 'horizon3ai',
+  'latitudecareers', 'lavendo', 'stedi', 'ambient.ai', 'blackpoint-cyber', 'brinc', 'column',
+  'deel', 'humatahealth', 'jasper-ai', 'opengov', 'render', 'sierra', 'tilthq', 'traba',
+  'adaption', 'atroposhealth', 'base-power', 'centivo', 'ema', 'etched', 'fluidstack',
+  'gallatin', 'lilt-corporate', 'machinify', 'meshy', 'raspberry', 'sleeper', 'tennr', 'zapier',
+  'akasa', 'cointracker', 'cyberhaven', 'graymatter-robotics', 'langchain', 'mercor', 'mural',
+  'nest-health', 'norm-ai', 'outliant', 'parafin', 'pluralis-research', 'radar', 'reducto',
+  'sandboxaq', 'scrunch-ai', 'valon', 'versemedical', 'achira', 'airgarage', 'binance.us',
+  'brigit', 'classdojo', 'equip', 'happyrobot.ai', 'intus', 'ironcladhq', 'kindred', 'kodex',
+  'monarchmoney', 'neon-health', 'scribe', 'socket', 'spearbit', 'sunday', 'uipath', 'assured',
+  'basis-research', 'firecrawl', 'found', 'grindr-llc', 'hackerone', 'harmattan-ai', 'helion',
+  'homevision', 'hopper', 'jerry.ai', 'jump-app', 'liquid-ai', 'lovable', 'mainstay', 'middesk',
+  'mux', 'nexxen', 'people-data-labs', 'qualified', 'range', 'sesame', 'tapcheck', 'tarro',
+  'titan-ai', 'virtahealth', 'withpulley', 'worldly', 'articul8', 'astronomer',
+  'chainalysis-careers', 'citizen-health', 'clipboard', 'crogl', 'cruxclimate', 'dave',
+  'demandbase', 'echo', 'evertune', 'fieldguide', 'freed', 'imprint', 'iodine-software',
+  'kalshi', 'lgads', 'mai', 'maticrobots', 'n1', 'nerdwallet', 'nestveterinary', 'persona.ai',
+  'prompt', 'relevanceai', 'sciemo', 'supabase', 'tavily', 'tensorwave', 'thebotcompany',
+  'toogeza', 'traversal', 'vultr', 'acorns', 'aetherflux', 'alembic', 'ambiencehealthcare',
+  'ansiblehealth', 'antares', 'anysignal', 'atomicsemi', 'augmodo', 'carian', 'compa',
+  'compscience', 'crackenagi', 'distyl', 'eliseai', 'finvari', 'gecko-robotics', 'hatch',
+  'havocai', 'healthaxis', 'homebase', 'jellyfish', 'jump', 'justwin', 'kit', 'lorikeet',
+  'markarch', 'noetica', 'observeinc', 'oligo', 'oneleet', 'optery', 'p-1-ai', 'panoptyc',
+  'pear-vc', 'planera', 'promise', 'protegrity', 'quilter', 'rho', 'safelease', 'sentry',
+  'suzy', 'tabs', 'topline-pro', 'trace-machina', 'twelve-labs', 'unit410', 'yutori',
+  'ziplines', 'zippymh', 'zyphra', '1mind', 'altimate', 'amca', 'apollo-graphql', 'artisan',
+  'bland', 'broccoli', 'camber', 'cape', 'catena-labs', 'coderabbit', 'cred-platform',
+  'dailypay', 'dominion-dynamics', 'elicit', 'epistemix', 'formenergy', 'frontcareers', 'g2',
+  'gamechanger', 'gridunity', 'harperinsure', 'headstart', 'healnow', 'higharc', 'hiya',
+  'infinity-constellation', 'kin', 'kong', 'magicschool', 'medal', 'medraai', 'mirage',
+  'monq', 'mudflap', 'netgear', 'nextlinklabs', 'nexxa', 'niramedical', 'noda-ai', 'numeral',
+  'observable-space', 'omni', 'orchard', 'phantom', 'posthog', 'pragmatike', 'preludesecurity',
+  'profound', 'rebuy', 'red6', 'renuity', 'replicant', 'rescale', 'riveron', 'shiftkey',
+  'skelar', 'speak', 'stack-ai', 'substack', 'tandem', 'togal-ai', 'tonal', 'transgrid-energy',
+  'two-dots', 'vitvio', 'voxel', 'workos', 'aidkit', 'airops', 'antimetal', 'apiphany',
+  'arb-interactive', 'arcade-ai', 'ashby', 'axionray', 'bastion', 'blockworks', 'braintrust',
+  'brightwheel', 'centralhq', 'characterbio', 'chief', 'close', 'coder', 'continua',
+  'cuesta-partners', 'delve', 'drata', 'duckbill', 'eloquentai', 'far.ai', 'find-tempo',
+  'freshpaint', 'furiosa-ai', 'general-counsel-ai', 'genesis-therapeutics', 'goodship',
+  'goventi', 'gridium', 'helius', 'highlightta', 'illumio', 'infisical', 'instructure',
+  'january', 'junipersquare', 'lendable', 'lilt-production', 'limble', 'lynk', 'maximustribe',
+  'northwoodspace', 'obvio', 'odyssey', 'onoshealth', 'orca', 'ouro-careers-page', 'palettelabs',
+  'percepta', 'phare', 'poshmark', 'prophet-security', 'railway', 'rainforest-pay', 'read-ai',
+  'reevo', 'replicated', 'rillet', 'ruby-labs', 'sailorhealth', 'sciforium', 'semperis',
+  'simpleclosure', 'siro', 'skiffra-ai', 'smalls', 'southgeeks', 'stepful', 'sunnydata',
+  'taekus', 'technitask', 'terranova', 'thatgamecompany', 'turnkey', 'twenty', 'vanilla',
+  'videa.ai', 'watershed', 'xbowcareers', 'zefr', '0g', 'agent', 'anrok', 'answersnow',
+  'anyscale', 'artemisanalytics', 'auger', 'august-health', 'aurelian', 'axle-health', 'barti',
+  'beaconai', 'beamimpact', 'benepass', 'braiins', 'brainco', 'brevis-network', 'cambio',
+  'cognition', 'craft.co', 'crosby', 'd-matrix', 'darwin', 'datacurve', 'devsavant',
+  'directive', 'distributed-spectrum', 'dorafactory', 'dorahacks', 'dune', 'earnedwealth',
+  'edvisorly', 'eye-security', 'eyetell', 'fathom.video', 'finni-health', 'fluency', 'flux',
+  'focused', 'fortreum', 'foundationhealthcareers', 'furtherai', 'geoforce', 'gigaml', 'glide',
+  'gptzero', 'greenlite', 'gridcare', 'haydenai', 'helm-ai', 'impulse', 'lark', 'latent',
+  'livekit', 'lumilens', 'lyric', 'madhive', 'mangomint', 'maybern', 'mazedesign', 'mazehq',
+  'mechanize', 'megazone', 'mindbeam', 'mintlify', 'moxfive', 'nabla', 'neon', 'newfront',
+  'nudge', 'omi', 'opusclip', 'pactfi', 'pearlhealth', 'personainc.ai', 'popl', 'prokeep',
+  'prolego', 'pulse', 'qawolf', 'reflectionai', 'reflexrobotics', 'replo', 'retell-ai', 'rogo',
+  'roompricegenie', 'rythm', 'screenverse', 'seconddinner', 'seneca', 'sevenai', 'siftstack',
+  'silnahealth.com', 'solink', 'starbridge', 'statista', 'statsig', 'swoop', 'taaraconnect',
+  'tenexlabs', 'terrafirma', 'the-global-talent-co', 'the-zebra', 'tnt-growth', 'todyl',
+  'tremendous', 'trunk-tools', 'twodots', 'tycho-ai', 'valonvm', 'vorticity', 'wander',
+  'wellth', 'wynd-labs', 'yotta', 'zencastr', 'anthropic', 'discord', 'linear', 'cloudflare',
+  'brex', 'lattice', 'superhuman', 'warp', 'sanity', 'mapbox', 'replicate', 'pinecone',
+  'weaviate', 'llamaindex', 'pika', 'ideogram', 'genmo', 'gamma', 'vercel', 'railway',
+  'inngest', 'clerk', 'nango', 'liveblocks', 'tinybird', 'trigger', 'knock', 'orb',
+];
+
+// Greenhouse companies (2500+ from CSV)
+const GREENHOUSE_COMPANIES = [
+  // Tech Giants & Unicorns
+  'airbnb', 'stripe', 'figma', 'airtable', 'coinbase', 'instacart', 'reddit', 'pinterest',
+  'dropbox', 'asana', 'canva', 'miro', 'gitlab', 'squarespace', 'okta', 'gusto', 'flexport',
+  'grammarly', 'webflow', 'notion', 'calendly', 'loom', 'amplitude', 'brex', 'chime', 'sofi',
+  'affirm', 'marqeta', 'blend', 'plaid', 'cityblock', 'ro', 'headspace', 'cerebral', 'hinge',
+  'noom', 'warbyparker', 'allbirds', 'casper', 'glossier', 'mongodb', 'hashicorp', 'confluent',
+  'cockroachlabs', 'timescale', 'fivetran', 'dbt', 'airbyte', 'prefect', 'astronomer', 'openai',
+  'anthropic', 'scale', 'cohere', 'huggingface', 'stability', 'jasper', 'runwayml',
+  // Companies from CSV
+  '10xgenomics', '174powerglobal', '1password', '7shifts', '8451', 'a1msolutions', 'aarkiinc',
+  'abacusfinancegroup', 'abarca', 'abbyy', 'abodo', 'absurdventures', 'acadia', 'acadiainc',
+  'acadianassetmanagementllc', 'acadiapharmaceuticals', 'acryldata', 'adelphiresearch',
+  'aechelontechnology', 'aegworldwide', 'affinipay1', 'afresh', 'afscareersmarketplace',
+  'agecareers', 'agilesixv2', 'agoda', 'aift', 'airship', 'airspace', 'airwallex', 'akunacapital',
+  'alertmedia', 'aligntech', 'alixpartners', 'allarahealth', 'allencontrolsystems',
+  'allenintegratedsolutions', 'alltech', 'alpenlabs', 'alphafmcroles', 'altoslabs', 'alu',
+  'alvys', 'amendconsulting', 'amenitiz', 'amount', 'amwell', 'analyst1', 'analyticservicesinc',
+  'anaplan', 'antenna', 'anteriad', 'anyscale', 'aottechnologies', 'appdirect', 'appian',
+  'applytopassagehealth', 'applytowhoosh', 'aquasec', 'aquia', 'archlynkllc', 'arcticwolfnetworks',
+  'arctouch', 'ardengeospatial', 'array', 'arsys2', 'ascellahealth', 'ascentds', 'ascertain',
+  'assemblyai', 'assuredguaranty', 'atek', 'atlassp', 'attotude', 'auditboard', 'augmentcomputing',
+  'auth0', 'authenticx', 'autods', 'avegantcorp', 'aviatrix', 'axs', 'ayahealthcare',
+  'azuritypharmaceuticals', 'b12', 'babelstreet', 'babylist', 'backblaze', 'bailedjobs',
+  'bairesdev', 'barbaricum', 'bedrockrobotics', 'beewise', 'beta', 'betasoftsystems', 'betterment',
+  'beyondfinance', 'beyondmissioncapable', 'bigid', 'bilderlings', 'bioptimus8', 'blacksky',
+  'blackthornposting', 'blastpoint', 'blockstream', 'bloomerang', 'blueroseresearch', 'bluestaq',
+  'bobsled', 'boldbusiness', 'bootcampinstructionalengagement', 'breezeway', 'bridgebio',
+  'bseglobal', 'bstock', 'bstocksolutions', 'btig27', 'builder', 'buyersedgeplatformllc',
+  'buzzrx', 'byheart', 'cafortune', 'cais', 'cakeai', 'calahealth', 'calicolabs', 'callibrity',
+  'cambly', 'candex', 'candidly', 'canva', 'capitalfarmcredit', 'capstoneinvestmentpartners',
+  'careportalinc', 'carrumhealth', 'casemanagementconsulting', 'casper', 'catapultsports',
+  'cayabacare', 'caylent', 'ccah', 'cdataindia', 'censys', 'centriahealthcare', 'centrumhealth',
+  'cerebral', 'ceribell', 'cerulacare', 'chainalysis', 'chargepoint', 'charliehealth',
+  'chicagotrading', 'chicagotradingreferral', 'circle', 'circleso', 'civisanalytics', 'cleo',
+  'clinchoice', 'clipboard', 'clockworksystems', 'cloudbeds', 'cloverhealth', 'clsgroup',
+  'cobaltio', 'cobaltservicepartners', 'cockroachlabs', 'coda', 'coefficient', 'cognitotherapeutics',
+  'color', 'commerceiq', 'compasspathways', 'compeerfinancial', 'compoundeye', 'concentric',
+  'conga', 'connatix', 'connecteam', 'connectedcannabis', 'connectwise', 'connerstrongbuckelew',
+  'consumeredge', 'convertkit', 'coreone', 'corestory', 'corpaxe', 'correlationone', 'cortex',
+  'couchbaseinc', 'coursera', 'covetool', 'cranialtechnologies', 'crescendohealth', 'crescolabs',
+  'cresta', 'crexi', 'criticalmass', 'crunchbase', 'cti', 'culturebiosciences', 'curaleaf',
+  'curri', 'd2consulting', 'd2l', 'dashlane', 'datacor', 'datadoghq', 'dataseersai', 'datavant',
+  'daybreakhealth', 'dbeaver', 'dbt', 'decisions', 'deepintent', 'deepwatch', 'desbytech',
+  'devfuturetalent', 'devo', 'devtechnology', 'dexisconsultinggroup', 'dhpace', 'digibeeinc',
+  'digitalocean', 'digitalocean98', 'diligent', 'diligentcorporation', 'diligentrobotics',
+  'dimagi', 'dispatchhealthmanagement', 'distrokid', 'divcowest', 'divergehealth', 'dlhcorporation',
+  'dominodatalab', 'domo', 'doordash', 'dotdashmeredith', 'dotmatics', 'drips', 'dtljobs',
+  'dudeperfect', 'dxacirca', 'dyopath', 'easyship', 'edenhealth', 'edged', 'edged_infrastructure',
+  'edmentum', 'edreports', 'education', 'effectual', 'efficientcomputer', 'eknengineering',
+  'elasticco', 'electric', 'eleoshealth', 'emergingtalentrm', 'emplififr', 'ennoblecare',
+  'ensco', 'entain', 'entera', 'enterpret', 'environmentalscienceassociates', 'epicbio', 'eplus',
+  'eridan', 'etchedai', 'etelligentgroup', 'ethernovia', 'ethyca', 'everag', 'everdriven',
+  'evermore', 'everpass', 'evertrue', 'evismart', 'evolutioniq', 'evolver', 'evolvevacationrental',
+  'exabeam', 'excella', 'exiger', 'expel', 'expelconfidential', 'experian', 'extenteam',
+  'fairlife', 'falconx', 'faradayfuture', 'fashionnova', 'federato', 'fedml', 'feedzai', 'fetch',
+  'fidelityguarantylifeinternships', 'figure', 'firmpilotailawfirmmarketing', 'fleetio', 'fliff',
+  'flovisionsolutions', 'flyzipline', 'fool', 'forbes', 'formationbio', 'formstack', 'forter',
+  'fortisgames', 'fortra', 'fourhands', 'franklincovey', 'freeformfuturecorp', 'freestar',
+  'freestonecapitalmanagement', 'freshprints', 'friendlyfranchisees', 'fulfil', 'fullstacklabs',
+  'furtherearlycareer', 'galaxydigitalservices', 'galileofinancialtechnologies', 'gatherai',
+  'gatikaiinc', 'genuine', 'getcruise', 'ghd', 'ghx', 'gipathfinder', 'github', 'gmrmarketing',
+  'godaddy', 'goodnotes', 'goodtime', 'googlefiber', 'goprocareers', 'gotorq', 'gradientai',
+  'gradle', 'graft', 'grahamcapitalmanagement', 'granum', 'grassrootsanalytics', 'gravwell',
+  'greenpointtechnologies', 'greenhouse', 'greenlight', 'greymatterrobotics', 'gridwise',
+  'growth', 'gtri', 'gundersenprivateequity', 'gyrolift', 'hallow', 'harness', 'harveyconsulting',
+  'hellosign', 'hfi', 'highspot', 'hinge', 'hired', 'hiringbranch', 'hopin', 'hosplify',
+  'hotjar', 'huntersstrategygroup', 'hypergiant', 'idealist', 'illumina', 'imply', 'incode',
+  'indigofair', 'influitive', 'informaconnect', 'instabase', 'instacart', 'intercom', 'invesco',
+  'iovlabs', 'ipreo', 'ironclad', 'ironmountain', 'janestreet', 'jasper', 'jobcase', 'jobcloud',
+  'jobrapido', 'jolt', 'jumio', 'junglescout', 'justworks', 'karma', 'keen', 'keeper',
+  'kettle', 'keystonestrategy', 'kira', 'klaviyo', 'klook', 'knopp', 'kontakt', 'koser',
+  'kpmg', 'lacework', 'latitude', 'launchpotato', 'learnlux', 'lgelectronics', 'liftoff',
+  'm3', 'mantrahealth', 'manychat', 'masterclass', 'mattermost', 'medeanalytics', 'medeloop',
+  'mediacurrent', 'medialabaiinc', 'meriton', 'midihealth', 'mindbody', 'mindsquareag',
+  'minitab', 'mlbevents', 'mobilityware', 'mochihealth', 'momence', 'monumentsoftwareinc',
+  'monzo', 'morsecorp', 'moveworks', 'mqreferrals', 'mrbeastyoutube', 'nooks', 'northbeam',
+  'notion', 'nyiso', 'okx', 'onevest', 'openai', 'opendoor', 'openloop', 'opentable',
+  'ottoaviation', 'pagerhealth', 'pansophiclearning', 'paretocaptiveservicesllc', 'pathrobotics',
+  'patientpoint', 'pax8', 'peakenergy', 'perscholashires', 'phiture2', 'physicsx', 'pingidentity',
+  'pioneersquarelabs', 'planetlabs', 'publicinput', 'qgenda', 'qohash', 'readyset29',
+  'redcellpartners', 'reflective', 'relativityspace', 'remotereferralboardinternaluseonly',
+  'renaissancelearning', 'resortpass', 'rhymetec', 'roo', 'saltsecurity', 'scoutmotors',
+  'seamlessai', 'seatgeek', 'seekout', 'sesamm', 'setpoint', 'shopify', 'shopltk', 'signifyd95',
+  'siriuspoint', 'skildai-careers', 'smartasset', 'smartbear', 'snorkelai', 'sparrow',
+  'spauldingridge', 'spektrum', 'srm', 'stackblitz', 'stackexchange', 'steercrm', 'stellarcyber',
+  'stellarhealth', 'stratacareers', 'studycontractors', 'surveymonkey', 'swanbitcoin',
+  'sweetgreen', 'teravision', 'thedigitrustgroup', 'theoakleafgroup', 'theoncologyinstitute',
+  'theoriamedical', 'thesciongroupllc', 'thetradedesk', 'tide', 'torcrobotics', 'torq',
+  'toshibaglobalcommercesolutions', 'travelperk', 'ttcglobal', 'turing', 'uareai', 'udemy',
+  'unanet', 'unframe', 'universalaudio', 'updater', 'valon', 'vannahealth', 'vectranetworks',
+  'veriforce', 'vertexservicepartners', 'verticalbridge', 'via', 'viamrobotics', 'virtahealth',
+  'voxmedia', 'voyagertechnologiesinc', 'wavemm1', 'whatnot', 'wirewheel', 'wiz', 'wonderschool',
+  'wrike', 'ylopo', 'yotpo', 'zetasummerinternship',
+];
+
+// Lever companies (700+ from CSV)
+const LEVER_COMPANIES = [
+  'jobgether', 'veeva', 'zoox', 'thinkahead', 'spotify', 'rackspace', 'palantir', 'attentive',
+  'cesiumastro', 'brillio-2', 'includedhealth', 'aledade', 'voleon', 'webfx', 'bluelightconsulting',
+  'anchorage', 'oowlish', 'shieldai', 'welocalize', 'whoop', 'beta', 'owner', 'imo-online',
+  'ro', 'saronic', '3pillarglobal', 'aifund', 'arsiem', 'super-com', 'arcadia', 'luxurypresence',
+  'vida', 'workos', 'cyderes', 'goodleap', 'bhhc', 'extremenetworks', 'gohighlevel', 'gopuff',
+  'penumbrainc', 'questanalytics', 'zuru', 'agile-defense', 'articulate', 'filevine',
+  'pointclickcare', 'trilogyfederal', 'wpromote', 'certik', 'field-ai', 'toptal', 'atmosera',
+  'captivateiq', 'crypto', 'hhaexchange', 'kiddom', 'nominal', 'openx', 'perrknight',
+  'blackcloak', 'chownow', 'cognite', 'desbytech', 'everbridge', 'ion', 'lumindigital',
+  'matchgroup', 'mistral', 'pano', 'prosper', 'quizlet-2', 'rover', 'starcompliance',
+  'activecampaign', 'analyticpartners', 'anavationllc', 'basis', 'bluesight', 'doranjones',
+  'drivetrain', 'endpointclinical', 'missionwired', 'modeln', 'nava', 'pingwind', 'pryon',
+  'regard', 'tryjeeves', 'uvcyber', 'anovium', 'arraylabs.io', 'bhg-inc', 'biointellisense',
+  'bumbleinc', 'ccmr3', 'cimgroup', 'coalfire', 'color', 'curri', 'dnb', 'dodmg', 'entefy',
+  'gauntlet', 'hive', 'isee', 'kraken123', 'loftorbital', 'offchainlabs', 'orcabiosystems',
+  'plaid', 'redwoodcu', 'sensortower', 'shippo', 'swordhealth', 'teleport', 'tendo',
+  'theathletic', 'trueplatform', 'waabi', 'windfalldata', 'additionwealth', 'allegiantair',
+  'altarum', 'butterpayments', 'canarytechnologies', 'chefrobotics', 'danson-solutions',
+  'dronesense', 'espace', 'foodsmart', 'glsllc', 'hatchit', 'jumpcloud', 'lightedge',
+  'lumafield', 'mactores', 'nextech', 'omnidian', 'pattern', 'peerspace', 'radformation',
+  'revealtech', 'spreedly', 'teecom', 'truezerotech', 'upguard', 'wealthfinancialtechnologies',
+  'workwave', 'apptegy', 'artera', 'avivesolutions', 'bolster', 'cologix', 'coupa',
+  'dronedeploy', 'fi', 'galvanick', 'insomniacdesign', 'ispace-inc', 'latitudeinc',
+  'leverdemo-8', 'loopreturns', 'lyrahealth', 'magnals', 'magnetforensics', 'metabase',
+  'npowermedicine', 'picklerobot', 'pivotal', 'playonsports', 'plus-2', 'protolabs',
+  'reliable', 'robust-ai', 'saviynt', 'smart-working-solutions', 'talentneuron',
+  'theblockcrypto', 'wyetechllc', 'xsolla', '2os', 'accurate', 'agiloft', 'airslate',
+  'alertus', 'allata', 'anysignal', 'audinate', 'authentic8', 'binance', 'bounteous',
+  'brightwheel', 'caremessage', 'cents', 'cgsfederal', 'ciandt', 'cmgx', 'cognitiv',
+  'corebts', 'egen', 'elementsolutions', 'estenda', 'fliff', 'gausslabs', 'grailbio',
+  'gridware', 'houzz', 'hrl', 'netflix', 'cloudflare', 'datadog', 'elastic', 'mongodb',
+  'snowflake', 'segment', 'amplitude', 'mixpanel', 'braze', 'iterable', 'sendgrid',
+  'twilio', 'shopify', 'atlassian', 'figma', 'notion', 'airtable', 'coda', 'clickup',
+  'linear', 'productboard', 'launchdarkly', 'vercel', 'netlify', 'supabase', 'planetscale',
+  'neon', 'upstash', 'railway', 'render', 'fly', 'modal', 'liveblocks', 'tinybird',
+  'inngest', 'trigger', 'knock',
+];
+
+// SmartRecruiters companies (1400+ from CSV)
+const SMARTRECRUITERS_COMPANIES = [
+  'oneclick-ui', 'sonsoftinc', 'servicenow', 'experian', 'paloaltonetworks2', 'visa',
+  'atriagroupllc', 'prosidianconsulting', 'krgtechnologyinc', 'nbcuniversal3', 'usm2',
+  '360itprofessionals1', 'boschgroup', 'captechconsulting', 'integratedresourcesinc',
+  'sonomaconsultinginc', 'nagarro1', 'intuitive', 'dev2', 'eurofins',
+  'nextlevelbusinessservicesinc2', 'tectammina', 'collabera2', 'artechinformationsystemllc',
+  'miratech1', 'comtechllc2', 'nielseniq', 'sgs', 'svtechsystemsinc1', 'mindlance2',
+  'aristanetworks', 'devoteam', 'hitachisolutions', 'jobsforhumanity', 'publicstorage',
+  'sandisk', 'satechnologiesinc4', 'fortunebrands', 'pyramidit1', 'soprasteria1', 'linkedin3',
+  'talan', 'eproinc', 'jobsbridge1', 'turnitinllc', 'quantix', 'stemxpert1', 'abbvie',
+  'cyberark1', 'louisdreyfuscompany', 'procoretechnologies', 'brightspeed', 'averydennison',
+  'bluestone', 'canva', 'continental', 'kgstechnologygroupinc', 'llnl', 'aecom2', 'solidigm',
+  'betasoftsystems3', 'cityofnewyork', 'lancesoftinc2', 'logicalparadigm1',
+  'procomconsultantsgroup', 'renesaselectronics', 'saxonglobal', 'dstaff', 'freshworks',
+  'harvarduniversity', 'itexcel2', 'northwesternmedicine', 'sqexpetsllc', 'usitsolutionsinc',
+  'ustechsolutions2', 'atpco1', 'cricut', 'forbesadvisor', 'informagroupplc',
+  'mcdonaldscorporation', 'sutherland', 'testingxperts', 'tietoevry1', 'trigyntechnologies1',
+  'westerndigital', 'wjcompany', 'ayrglobalitsolutionsinc', 'dominos', 'insilicologix',
+  'psgglobalsolutions2', 'sia', 'itexcelllc', 'xinnovit', 'agileenterprisesolutions',
+  'altisource', 'aretetechnologiesinc', 'deegitinc3', 'infojiniinc1', 'lenmarconsultinginc',
+  'mattelinc', 'netcompany1', 'version1', 'wellmarkinc', 'axiado', 'bet3651', 'blend360',
+  'ifs1', 'info-ways', 'intelliswiftinc', 'oteemoinc', 'paynearme', 'technologynavigators',
+  'thenielsencompany', 'askitconsulting', 'cystemslogicinc1', 'deliveryhero',
+  'derextechnologiesinc', 'equinox', 'esolvitinc', 'implifyinc', 'linksolutionsinc',
+  'metasys', 'paconsulting', 'paradigminfotech', 'procomservices', 'samsungsdsa',
+  'smartrecruiters', 'thealtipgroup', 'tmsllc', 'turnertownsend', 'veoliaenvironnementsa',
+  'vitol', 'agtechnologies1', 'altersolutions', 'assent', 'betasoftsysteminc', 'chabeztech',
+  'codersdatallc', 'coface', 'cygnusprofessionalsinc2', 'dellfortechnologies', 'entain',
+  'exparteinc', 'flywire1', 'globalchannelmanagementinc', 'idealforcellc', 'msxinternational',
+  'precisiontechnologies1', 'respecinc', 'sajixsoftwaresolutionprivatelimited', 'sbtglobalinc',
+  'syngentagroup', 'technogen', 'wix2', 'accionlabs2', 'achieve1', 'aumovio', 'betsol',
+  'catasyshealth', 'crowellmoring', 'davidweekleyhomes', 'guardanthealth', 'visa', 'bosch',
+  'sap', 'ikea', 'adidas', 'dell', 'linkedin', 'equinix', 'priceline', 'booking', 'bayer',
+  'siemens', 'philips', 'schneiderelectric', 'tmobile', 'square', 'wise',
+];
+
+// Jobvite companies (250+ from CSV)
+const JOBVITE_COMPANIES = [
+  'leantechio', 'ness', 'windriver', 'varonis-internal', 'versa-networks', 'internetbrands',
+  'isoftstone', 'windward-consulting', 'zones', 'ninjaone', 'parkland', 'pulsepoint',
+  'synergy', 'actionet', 'biofiredx', 'carfax', 'evgo', 'loandepot', 'saama', 'sikichcareers',
+  'uplight', 'innio', 'barracuda-networks-inc', 'careers', 'egnyte', 'evolvconsulting',
+  'imprivata', 'cmgfi', 'forescout', 'insurity', 'itechag', 'lifenethealth', 'onecoprd',
+  'vaniamgroup', 'amerisavecareers', 'avercareers', 'biomarin', 'double-negative-visual-effects',
+  'edgeautonomy-careers', 'healthmapsolutions', 'leadventure', 'mini-circuits', 'neogenomics',
+  'optimizely', 'parts-town', 'psi-pax', 'rivasolutions', 'simaai', 'transdevna-careers',
+  'varonis', 'ventanamicro', 'webmd', 'windward', 'xdin', 'yodlee', 'absolute', 'bankerstoolbox',
+  'braviumconsulting', 'civicplus', 'decisiveinstincts', 'epma', 'glidewelldental',
+  'highpoint-global', 'idtus', 'nlight', 'oreilly-media', 'peopleconnectstaffing',
+  'pointofrental', 'rhi', 'samtec', 'src-inc', 'victaulic', '4ccareers', 'aarete', 'agilysys',
+  'blountfinefoods', 'brinkshome', 'dodgeconstructionnetwork', 'dotsecurity', 'dwt',
+  'enphase-energy', 'equitymethods', 'garten', 'iboss', 'iowaclinic', 'lhhcareers',
+  'marketshare', 'metaphaseconsulting', 'myhrpartnerinc', 'natixis', 'nuscale-power',
+  'onsetech', 'ookla', 'openlending', 'panasas', 'pih', 'praxis-engineering',
+  'probablymonsters', 'riskspan', 'siriuspoint', 'techsmith', 'trianz', 'vmdsystems',
+  'zodiac', '360insights', '3degrees', 'act-on-software', 'aculocity', 'ainsworth',
+  'alivecor', 'amberstudiocareers', 'amerisave', 'androcles-group', 'arcusbiosciencescareers',
+  'arrise', 'aryaka', 'ashcompanies', 'asus', 'avaap-careers', 'ayla-networks', 'barracuda',
+  'behaviorfrontiers', 'brahma', 'ccsfundraising', 'ccu', 'cei', 'chiefind',
+  'communityoptions', 'consumer-tech', 'creditassociates', 'daveramsey', 'devo', 'dneg',
+  'edelmanfinancialengines', 'edgeautonomy', 'emoneyadvisor', 'emoneyadvisor-review',
+  'engagesmart', 'everyday-health-professional', 'feedingamerica', 'fieldcore', 'firstbank',
+  'firstcash-holdings-inc', 'fullpower', 'gigamon', 'groupon', 'gvwgroup', 'harmonic',
+  'hnicareers', 'hoar', 'idt', 'incontact', 'innio-test', 'inrix', 'invue', 'ip-infusion',
+  'jobs-gigait', 'kymanox', 'kymetacorp', 'laserfiche', 'leadventure-india',
+  'lean-solutions-group', 'leopardo', 'lincolnindustries', 'liquid-robotics-inc', 'longos',
+  'lowensteinsandler', 'manhattanstrategy', 'maplesgroup', 'marvelmarketers', 'mattamyhomes',
+  'mccarthy-building-co', 'medallia', 'meridianit', 'meridianlink', 'multivac', 'myeyedr',
+  'nessusa', 'nice-actimize-old', 'nmr-consulting', 'oakwood-systems-group-inc',
+  'orsini-healthcare', 'ovt', 'panynj', 'pathoras', 'patternai', 'peloton', 'pilgrims',
+  'planful', 'praxisengineering', 'progress', 'qa-integration-migration', 'qtc',
+  'recurrent-energy', 'redalpha', 'relatient', 'resgroup', 'resolver', 'responsetek',
+  'rightpoint', 'rodan-and-fields-llc', 'rrpartners', 'sakura', 'samtec-ch', 'samtec-sp',
+  'sdipresence', 'sews', 'sikich', 'sitecore', 'smart-communications', 'sofi', 'spartan',
+  'starwoodhotels', 'suffolkuniversity', 'sumitomo-electric', 'symetri-usa',
+  'synergyinsurance', 'tanium', 'themergermarketgroup', 'theopusgroup',
+  'torrancememorialjobs', 'travis-credit-union', 'viking-cloud', 'vipre-security-group',
+  'vistahigherlearning-careers', 'weston', 'wondrhealth', 'worldpantry', 'wppmedia',
+  'xperi', 'yespreppublicschools', 'ziff-davis', 'ziff-davis-shopping', 'zendesk',
+  'sprinklr', 'medallia', 'ringcentral', 'docusign',
+];
+
+// JazzHR companies (350+ from CSV)
+const JAZZHR_COMPANIES = [
+  'abrigo', 'acecoretech', 'aceinfo', 'acmepacket', 'aerojet', 'agiliti', 'akuminc',
+  'alethiatechnologies', 'alink', 'alpha', 'alyssa', 'ambassadorservices', 'ameridrives',
+  'amicus', 'amundsendavislaw', 'animaker', 'anvilogic', 'apexsoftware', 'apexsystems',
+  'appliedbiosystems', 'arborcrownevents', 'arcadianit', 'arcompany', 'archtis', 'ardatagroup',
+  'argusmedical', 'ariomex', 'artillerydigital', 'aspentech', 'athenasecurityinc', 'attainix',
+  'auriga', 'avalara', 'aware', 'axiompath', 'backbonetechnologies', 'baisystemsinc', 'balihoo',
+  'beamit', 'beehive', 'bendingspoons', 'bestpick', 'bidairo', 'bigmotion', 'bisint',
+  'blackhill', 'blackmore', 'blueskyconnections', 'bluestellar', 'bluewavecomputing',
+  'bounteouscareers', 'brightspotcorp', 'briskheat', 'brodeur', 'burstly', 'bushel',
+  'cactuscomm', 'cadienttalent', 'calavista', 'calefy', 'cambioresearch', 'campuslogic',
+  'canvera', 'cardlytics', 'carecloud', 'careeritinc', 'casenetllc', 'cayenta', 'cedarhs',
+  'celegene', 'cengage', 'centria', 'cepheid', 'ceterasolutions', 'cfldynamics', 'cgi',
+  'chancelight', 'chargepointinc', 'charterhouse', 'chemonics', 'childrensprimary',
+  'cirrusaircraft', 'cityresources', 'civilengineer', 'clarifire', 'claritassec',
+  'claritycompliance', 'clearpathinc', 'clicksoftware', 'cloudblue', 'cloudera', 'cloverleaf',
+  'cmit', 'cobaltiron', 'codefuel', 'cogent', 'cogentive', 'collaborative', 'collegesteps',
+  'colliers', 'coloradotech', 'columbusdataservices', 'commerceone', 'componentspro',
+  'compuware', 'concursol', 'conexess', 'conifer', 'consumertrack', 'corelation',
+  'coremarkint', 'cornerstone', 'coyotelogistics', 'cprime', 'creativelive', 'creospan',
+  'crescenthealth', 'criblabs', 'crossover', 'crowdstrike', 'ctoai', 'cumminsallison',
+  'cunexa', 'cybage', 'cyberdyne', 'cybergrants', 'cynerge', 'dac', 'daktronics',
+  'dallasnews', 'damassets', 'danaconnect', 'danainfo', 'datadotcom', 'dataguise',
+  'datalogic', 'dataminr', 'datawire', 'dayzim', 'deepinstinct', 'deliverysolutions',
+  'deltek', 'demandgen', 'dentsuaegis', 'deque', 'desireatech', 'devada', 'develandtech',
+  'devsecops', 'dexcom', 'dgs', 'digitalglobe', 'digitalguardian', 'digitalribbons',
+  'digitaltarget', 'directsupply', 'discoveryinc', 'divvyhomes', 'dli', 'dolphincs',
+  'domaintools', 'domore', 'donnelly', 'drivemode', 'drt', 'drumbi', 'duarte', 'dxc',
+  'dynamicsignal', 'eainfo', 'eagleeyenetworks', 'eastbanctech', 'ebsco', 'eclipsys',
+  'ecoatm', 'ecobee', 'ecolab', 'ecotouch', 'edaptive', 'edelman', 'edgewell', 'edgile',
+  'edifecs', 'educare', 'ees', 'efolder', 'eharmony', 'eisneramper', 'elead',
+  'electricpower', 'elementdigital', 'elevateservices', 'elsevier', 'embarcadero',
+  'emergentmethod', 'emids', 'empyrean', 'enclavesecurity', 'endeva', 'energysavvy',
+  'engineerzone', 'enid', 'entrinsik', 'envato', 'envisionrx', 'epiq', 'epochsolutions',
+  'equator', 'eranyatech', 'ermi', 'esri', 'etq', 'eventbrite', 'eventhorizon',
+  'evergreen', 'everise', 'evermind', 'evolution', 'ewit', 'exabeam', 'exactech',
+  'exceleraatit', 'execonline', 'exela', 'exelon', 'expedia', 'experianauto', 'eyntra',
+];
+
+// BambooHR companies (from CSV)
+const BAMBOOHR_COMPANIES = [
+  'cornelisnetworks', 'www', 'erdosmiller', 'coherehealth', 'flocksafety', 'heliocampusmd',
+  'moduscreate', 'nutrient', 'pulsenicshr', 'zapierinc', 'zapier', 'postman', 'invision',
+  'buffer', 'hotjar', 'basecamp', 'doist', 'automattic', 'gitlab', 'toptal', 'cloudflare',
+  'hashicorp', 'ghost', 'trello', 'atlassian', 'envato', 'dribbble', 'convertkit',
+  'mailchimp', 'hubspot', 'intercom', 'stripe', 'figma', 'notion', 'airtable',
+];
+
+// BreezyHR companies (350+ from CSV)
+const BREEZYHR_COMPANIES = [
+  'shuvel', 'datamaxis', 'onebridge', 'nexthire', 'reveleer', 'transact-campus', 'vetsez',
+  'givzey', 'expression-networks', 'fitnext-co', 'international-consulting-associates-inc',
+  'resultstack', 'mind-computing', 'navaide', 'ninjaholdings', 'nuview', 'pyrovio',
+  'blenderbox', 'jway-group', 'red-cup-it-inc', 'sunpower', 'atlas-technica', 'bitdeer',
+  'concurrent-technologies-corporation', 'nuclearn-ai', 'vagaro', 'wolfe-llc', 'aarki',
+  'applied-imagination', 'cross-screen-media', 'cybervance', 'edgescore', 'everblue',
+  'ips-inc', 'isaac-health', 'jarvis-ml', 'localize', 'marketview-education-technology',
+  'mood', 'peoplefluent', 'personified-tech', 'prodev', 'socradar', 'soulchi', 'superdispatch',
+  'virtualitics', 'avasure', 'bluetread', 'bosun-25f9d5ec70da', 'clever-real-estate',
+  'colonial-surety-company', 'dc-logic-group', 'delan-associates-inc', 'dozuki',
+  'everspring-inc', 'eyesoneyecare', 'founders-workshop', 'freeeup', 'government-market-strategies',
+  'harris-jones-staffing-recruiting-llc', 'hctec', 'inorg-global', 'k-b-global-services',
+  'knexus-research-corp', 'leap-tools', 'maleda-tech', 'matrix-design-group', 'montage-marketing',
+  'moser-consulting', 'netrix-global', 'p3adaptive', 'parkar', 'property-meld',
+  'punch-cyber-analytics-group', 'seeknow', 'sentinel-blue', 'serverless-guru-llc', 'sparkbox',
+  'tactibit-technologies-llc', 'thirdandgrove', 'urrly', 'velox', 'vianai-systems',
+];
+
+// Workable companies (400+ from CSV)
+const WORKABLE_COMPANIES = [
+  'jobgether', 'tp-link-usa-corp', 'jobs', 'keepersecurity', 'tiger-analytics',
+  'capgemini-insurance', 'zoneit', 'credence', 'salvo-software', 'axiom-software-solution',
+  'control-risks-6', 'qodeworld', 'dmvitservice', 'tekspikes', 'assist-rx', 'onlogic-inc',
+  'protera', 'sand-cherry-associates-1', 'two95-international-inc-3', 'aravo', 'kentro',
+  'moxfivecyber', 'prepass', 'ssc-hr', 'hireframe', 'meshsystems', 'mlabs', 'node',
+  'optitrack', 'rokt', 'telestream', 'toyota-tsusho-systems', 'valsoft-corp', 'walter-careers',
+  'wavestrong', 'anvilogic-inc', 'consumeraffairs-1', 'cooperidge-consulting-firm', 'curology',
+  'fieldcrest-ventures', 'futurex-1', 'innopeaktech', 'innovaccer-analytics', 'kahunaworkforce',
+  'knowhirematch-1', 'mindex', 'ordermygear', 'pgtek', 'prox-works', 'rise-robotics',
+  'safranpassengerinnovations', 'shift-robotics', 'stanbridge', 'tetrascience',
+  'the-logical-answer', 'trailofbits', 'with-intelligence', 'worthai', 'accellor',
+  'apexinformatics', 'architectural-control-systems-inc', 'atec-spine', 'bask-health-1',
+  'c-the-signs', 'clearlyagile', 'datafied-1', 'dojo-five', 'ecp-123', 'evotek-1',
+  'geodelphi', 'greenberg-larraby-inc-gli', 'hellogov', 'huggingface', 'itsacheckmate-dot-com',
+  'jiffyshirts', 'mod-op', 'murmuration', 'nfi-parts', 'optisigns-inc', 'perryhomes',
+  'persimmons-ai', 'persuit-1', 'planetart', 'pony-dot-ai', 'reveal-health-tech',
+  'sapsol-technologies-inc-7', 'scalepex', 'sense', 'sparkfun-electronics-2', 'staffordgray',
+  'sweep360', 'techfirefly', 'therapynotes', 'toloka-ai', 'trl11-inc', 'xcellink', 'zaelab',
+];
+
+// Rippling companies (250+ from CSV)
+const RIPPLING_COMPANIES = [
+  'apexanalytix-careers', 'archehealth-job-board', 'armada-careers', 'bayrock-labs',
+  'bloomgrowth', 'brevian-careers', 'camlin-careers', 'castellumai', 'cbts', 'cintal',
+  'clubessential', 'column', 'commandlink', 'convo-communications-llc', 'crunchafi-llc',
+  'dmrtechnologies', 'epic-software', 'evosus-inc', 'feed-media-group', 'fellers',
+  'fello-careers', 'fidelis-technologies', 'firstfedcareers', 'formant-careers', 'framework',
+  'free-market-health', 'genios-ai', 'harborcompliance', 'hyperfi', 'impartner-software',
+  'inspectoriocareers', 'invita-healthcare-technologies', 'ioactive-tc', 'issa',
+  'keeblerhealth', 'kuvare-jobs', 'lavender-careers', 'legalontech-inc', 'lender-toolkit',
+  'leverage-companies', 'liminal', 'lisinski-law-firm', 'lmg-technology-services',
+  'loti-ai-inc', 'marketonce', 'ncd', 'netatwork', 'opaque', 'opennetworks', 'openyield',
+  'parentsquare', 'pendulum-intelligence-jobs', 'phase2-careers', 'plmrcareers',
+  'remote-legal', 'rsa-security', 'safety-radar-careers', 'scratch-financial',
+  'search-leaders-llc', 'seattle-credit-union-careers', 'serviceupcareers', 'sheerid',
+  'shipium', 'signaladvisors', 'smartwyre', 'solv-health', 'supplierio', 'telemed2u',
+  'useorigin', 'utility', 'vheda-health', 'widewail', 'zivian-health-inc',
+];
+
+// ===================== SCRAPER FUNCTIONS =====================
+
 // Greenhouse - uses public API with board discovery
 async function scrapeGreenhouse(query: string, limit: number, usaOnly: boolean): Promise<JobLink[]> {
   const jobs: JobLink[] = [];
-  console.log(`[Greenhouse] Searching for: ${query}`);
+  console.log(`[Greenhouse] Searching for: ${query}, companies: ${GREENHOUSE_COMPANIES.length}`);
   
-  // Verified working Greenhouse boards (as of 2024)
-  const companies = [
-    // Tech Giants
-    'airbnb', 'stripe', 'figma', 'airtable', 'coinbase', 'instacart',
-    'reddit', 'pinterest', 'dropbox', 'asana', 'canva', 'miro',
-    'gitlab', 'squarespace', 'okta', 'gusto', 'flexport', 'grammarly',
-    'webflow', 'notion', 'calendly', 'loom', 'amplitude', 'brex',
-    // Finance/Fintech
-    'chime', 'sofi', 'affirm', 'marqeta', 'blend', 'plaid',
-    // Healthcare
-    'cityblock', 'ro', 'headspace', 'cerebral', 'hinge', 'noom',
-    // E-commerce
-    'warbyparker', 'allbirds', 'casper', 'glossier',
-    // Enterprise
-    'mongodb', 'hashicorp', 'confluent', 'cockroachlabs', 'timescale',
-    'fivetran', 'dbt', 'airbyte', 'prefect', 'astronomer',
-    // AI/ML
-    'openai', 'anthropic', 'scale', 'cohere', 'huggingface',
-    'stability', 'jasper', 'runwayml', 'midjourney',
-  ];
+  // Limit concurrent requests
+  const batchSize = 20;
+  const batches = [];
+  for (let i = 0; i < GREENHOUSE_COMPANIES.length && jobs.length < limit; i += batchSize) {
+    batches.push(GREENHOUSE_COMPANIES.slice(i, i + batchSize));
+  }
   
-  for (const company of companies) {
+  for (const batch of batches) {
     if (jobs.length >= limit) break;
     
-    try {
-      const data = await fetchJSON(`https://boards-api.greenhouse.io/v1/boards/${company}/jobs`);
-      
-      if (data?.jobs) {
-        for (const job of data.jobs) {
-          if (jobs.length >= limit) break;
+    const results = await Promise.allSettled(
+      batch.map(async (company) => {
+        try {
+          const data = await fetchJSON(`https://boards-api.greenhouse.io/v1/boards/${company}/jobs`);
+          const companyJobs: JobLink[] = [];
           
-          const title = job.title?.toLowerCase() || '';
-          const dept = job.departments?.[0]?.name?.toLowerCase() || '';
-          const queryLower = query.toLowerCase();
-          const location = job.location?.name || null;
-          
-          // Check if matches query
-          const matchesQuery = !queryLower || title.includes(queryLower) || dept.includes(queryLower);
-          
-          // Check USA filter
-          const matchesLocation = !usaOnly || isUSALocation(location);
-          
-          if (matchesQuery && matchesLocation) {
-            const jobUrl = job.absolute_url || `https://boards.greenhouse.io/${company}/jobs/${job.id}`;
-            jobs.push({
-              job_url: jobUrl,
-              job_url_hash: hashUrl(jobUrl),
-              job_title: job.title || null,
-              company_name: company.charAt(0).toUpperCase() + company.slice(1),
-              ats_platform: 'greenhouse',
-              location,
-              posting_date: job.updated_at || null,
-            });
+          if (data?.jobs) {
+            for (const job of data.jobs) {
+              const title = job.title?.toLowerCase() || '';
+              const dept = job.departments?.[0]?.name?.toLowerCase() || '';
+              const queryLower = query.toLowerCase();
+              const location = job.location?.name || null;
+              
+              const matchesQuery = !queryLower || title.includes(queryLower) || dept.includes(queryLower);
+              const matchesLocation = !usaOnly || isUSALocation(location);
+              
+              if (matchesQuery && matchesLocation) {
+                const jobUrl = job.absolute_url || `https://boards.greenhouse.io/${company}/jobs/${job.id}`;
+                companyJobs.push({
+                  job_url: jobUrl,
+                  job_url_hash: hashUrl(jobUrl),
+                  job_title: job.title || null,
+                  company_name: company.charAt(0).toUpperCase() + company.slice(1),
+                  ats_platform: 'greenhouse',
+                  location,
+                  posting_date: job.updated_at || null,
+                });
+              }
+            }
           }
+          return companyJobs;
+        } catch {
+          return [];
+        }
+      })
+    );
+    
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        for (const job of result.value) {
+          if (jobs.length < limit) jobs.push(job);
         }
       }
-    } catch (err) {
-      // Silent fail for individual companies
     }
   }
   
@@ -157,56 +568,62 @@ async function scrapeGreenhouse(query: string, limit: number, usaOnly: boolean):
 // Lever - uses public JSON API  
 async function scrapeLever(query: string, limit: number, usaOnly: boolean): Promise<JobLink[]> {
   const jobs: JobLink[] = [];
-  console.log(`[Lever] Searching for: ${query}`);
+  console.log(`[Lever] Searching for: ${query}, companies: ${LEVER_COMPANIES.length}`);
   
-  // Verified working Lever boards
-  const companies = [
-    'netflix', 'cloudflare', 'datadog', 'elastic', 'mongodb',
-    'snowflake', 'segment', 'amplitude', 'mixpanel', 'braze',
-    'iterable', 'sendgrid', 'twilio', 'shopify', 'atlassian',
-    'figma', 'notion', 'airtable', 'coda', 'clickup',
-    'linear', 'productboard', 'amplitude', 'launchdarkly',
-    'vercel', 'netlify', 'supabase', 'planetscale', 'neon',
-    'upstash', 'railway', 'render', 'fly', 'modal',
-    'liveblocks', 'tinybird', 'inngest', 'trigger', 'knock',
-  ];
+  const batchSize = 20;
+  const batches = [];
+  for (let i = 0; i < LEVER_COMPANIES.length && jobs.length < limit; i += batchSize) {
+    batches.push(LEVER_COMPANIES.slice(i, i + batchSize));
+  }
   
-  for (const company of companies) {
+  for (const batch of batches) {
     if (jobs.length >= limit) break;
     
-    try {
-      const data = await fetchJSON(`https://api.lever.co/v0/postings/${company}?mode=json`);
-      
-      if (Array.isArray(data)) {
-        for (const job of data) {
-          if (jobs.length >= limit) break;
+    const results = await Promise.allSettled(
+      batch.map(async (company) => {
+        try {
+          const data = await fetchJSON(`https://api.lever.co/v0/postings/${company}?mode=json`);
+          const companyJobs: JobLink[] = [];
           
-          const title = job.text?.toLowerCase() || '';
-          const categories = JSON.stringify(job.categories || {}).toLowerCase();
-          const queryLower = query.toLowerCase();
-          const location = job.categories?.location || null;
-          
-          const matchesQuery = !queryLower || title.includes(queryLower) || categories.includes(queryLower);
-          const matchesLocation = !usaOnly || isUSALocation(location);
-          
-          if (matchesQuery && matchesLocation) {
-            const jobUrl = job.hostedUrl || job.applyUrl;
-            if (jobUrl) {
-              jobs.push({
-                job_url: jobUrl,
-                job_url_hash: hashUrl(jobUrl),
-                job_title: job.text || null,
-                company_name: company.charAt(0).toUpperCase() + company.slice(1),
-                ats_platform: 'lever',
-                location,
-                posting_date: job.createdAt ? new Date(job.createdAt).toISOString() : null,
-              });
+          if (Array.isArray(data)) {
+            for (const job of data) {
+              const title = job.text?.toLowerCase() || '';
+              const categories = JSON.stringify(job.categories || {}).toLowerCase();
+              const queryLower = query.toLowerCase();
+              const location = job.categories?.location || null;
+              
+              const matchesQuery = !queryLower || title.includes(queryLower) || categories.includes(queryLower);
+              const matchesLocation = !usaOnly || isUSALocation(location);
+              
+              if (matchesQuery && matchesLocation) {
+                const jobUrl = job.hostedUrl || job.applyUrl;
+                if (jobUrl) {
+                  companyJobs.push({
+                    job_url: jobUrl,
+                    job_url_hash: hashUrl(jobUrl),
+                    job_title: job.text || null,
+                    company_name: company.charAt(0).toUpperCase() + company.slice(1),
+                    ats_platform: 'lever',
+                    location,
+                    posting_date: job.createdAt ? new Date(job.createdAt).toISOString() : null,
+                  });
+                }
+              }
             }
           }
+          return companyJobs;
+        } catch {
+          return [];
+        }
+      })
+    );
+    
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        for (const job of result.value) {
+          if (jobs.length < limit) jobs.push(job);
         }
       }
-    } catch (err) {
-      // Silent fail
     }
   }
   
@@ -217,50 +634,61 @@ async function scrapeLever(query: string, limit: number, usaOnly: boolean): Prom
 // SmartRecruiters - public API
 async function scrapeSmartRecruiters(query: string, limit: number, usaOnly: boolean): Promise<JobLink[]> {
   const jobs: JobLink[] = [];
-  console.log(`[SmartRecruiters] Searching for: ${query}`);
+  console.log(`[SmartRecruiters] Searching for: ${query}, companies: ${SMARTRECRUITERS_COMPANIES.length}`);
   
-  // Verified working SmartRecruiters companies
-  const companies = [
-    'visa', 'bosch', 'sap', 'ikea', 'adidas', 'dell', 
-    'linkedin', 'equinix', 'priceline', 'booking',
-    'bayer', 'siemens', 'philips', 'schneiderelectric',
-  ];
+  const batchSize = 15;
+  const batches = [];
+  for (let i = 0; i < SMARTRECRUITERS_COMPANIES.length && jobs.length < limit; i += batchSize) {
+    batches.push(SMARTRECRUITERS_COMPANIES.slice(i, i + batchSize));
+  }
   
-  for (const company of companies) {
+  for (const batch of batches) {
     if (jobs.length >= limit) break;
     
-    try {
-      const searchQuery = query ? `&q=${encodeURIComponent(query)}` : '';
-      const data = await fetchJSON(
-        `https://api.smartrecruiters.com/v1/companies/${company}/postings?limit=100${searchQuery}`
-      );
-      
-      if (data?.content) {
-        for (const job of data.content) {
-          if (jobs.length >= limit) break;
+    const results = await Promise.allSettled(
+      batch.map(async (company) => {
+        try {
+          const searchQuery = query ? `&q=${encodeURIComponent(query)}` : '';
+          const data = await fetchJSON(
+            `https://api.smartrecruiters.com/v1/companies/${company}/postings?limit=100${searchQuery}`
+          );
+          const companyJobs: JobLink[] = [];
           
-          const location = job.location?.city 
-            ? `${job.location.city}, ${job.location.country}` 
-            : job.location?.country || null;
-          
-          const matchesLocation = !usaOnly || isUSALocation(location);
-          
-          if (matchesLocation) {
-            const jobUrl = job.ref || `https://jobs.smartrecruiters.com/${company}/${job.id}`;
-            jobs.push({
-              job_url: jobUrl,
-              job_url_hash: hashUrl(jobUrl),
-              job_title: job.name || null,
-              company_name: job.company?.name || company,
-              ats_platform: 'smartrecruiters',
-              location,
-              posting_date: job.releasedDate || null,
-            });
+          if (data?.content) {
+            for (const job of data.content) {
+              const location = job.location?.city 
+                ? `${job.location.city}, ${job.location.country}` 
+                : job.location?.country || null;
+              
+              const matchesLocation = !usaOnly || isUSALocation(location);
+              
+              if (matchesLocation) {
+                const jobUrl = job.ref || `https://jobs.smartrecruiters.com/${company}/${job.id}`;
+                companyJobs.push({
+                  job_url: jobUrl,
+                  job_url_hash: hashUrl(jobUrl),
+                  job_title: job.name || null,
+                  company_name: job.company?.name || company,
+                  ats_platform: 'smartrecruiters',
+                  location,
+                  posting_date: job.releasedDate || null,
+                });
+              }
+            }
           }
+          return companyJobs;
+        } catch {
+          return [];
+        }
+      })
+    );
+    
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        for (const job of result.value) {
+          if (jobs.length < limit) jobs.push(job);
         }
       }
-    } catch (err) {
-      // Silent fail
     }
   }
   
@@ -271,70 +699,79 @@ async function scrapeSmartRecruiters(query: string, limit: number, usaOnly: bool
 // AshbyHQ - GraphQL API
 async function scrapeAshbyHQ(query: string, limit: number, usaOnly: boolean): Promise<JobLink[]> {
   const jobs: JobLink[] = [];
-  console.log(`[AshbyHQ] Searching for: ${query}`);
+  console.log(`[AshbyHQ] Searching for: ${query}, companies: ${ASHBY_COMPANIES.length}`);
   
-  // Verified AshbyHQ companies
-  const companies = [
-    'ramp', 'linear', 'vercel', 'retool', 'mercury', 'plaid',
-    'deel', 'lattice', 'notion', 'figma', 'loom', 'assembled',
-    'ashby', 'vantaai', 'snyk', 'posthog', 'dbt-labs',
-    'dagster', 'airbyte', 'prefect', 'temporal', 'pulumi',
-    'teleport', 'tailscale', 'ngrok', 'pagerduty',
-  ];
+  const batchSize = 15;
+  const batches = [];
+  for (let i = 0; i < ASHBY_COMPANIES.length && jobs.length < limit; i += batchSize) {
+    batches.push(ASHBY_COMPANIES.slice(i, i + batchSize));
+  }
   
-  for (const company of companies) {
+  for (const batch of batches) {
     if (jobs.length >= limit) break;
     
-    try {
-      const graphqlQuery = {
-        operationName: 'ApiJobBoardWithTeams',
-        variables: { organizationHostedJobsPageName: company },
-        query: `query ApiJobBoardWithTeams($organizationHostedJobsPageName: String!) {
-          jobBoard: jobBoardWithTeams(organizationHostedJobsPageName: $organizationHostedJobsPageName) {
-            jobs {
-              id
-              title
-              locationName
-              employmentType
-              publishedDate
+    const results = await Promise.allSettled(
+      batch.map(async (company) => {
+        try {
+          const graphqlQuery = {
+            operationName: 'ApiJobBoardWithTeams',
+            variables: { organizationHostedJobsPageName: company },
+            query: `query ApiJobBoardWithTeams($organizationHostedJobsPageName: String!) {
+              jobBoard: jobBoardWithTeams(organizationHostedJobsPageName: $organizationHostedJobsPageName) {
+                jobs {
+                  id
+                  title
+                  locationName
+                  employmentType
+                  publishedDate
+                }
+              }
+            }`
+          };
+          
+          const data = await fetchJSON('https://jobs.ashbyhq.com/api/non-user-graphql?op=ApiJobBoardWithTeams', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(graphqlQuery),
+          });
+          const companyJobs: JobLink[] = [];
+          
+          if (data?.data?.jobBoard?.jobs) {
+            for (const job of data.data.jobBoard.jobs) {
+              const title = job.title?.toLowerCase() || '';
+              const queryLower = query.toLowerCase();
+              const location = job.locationName || null;
+              
+              const matchesQuery = !queryLower || title.includes(queryLower);
+              const matchesLocation = !usaOnly || isUSALocation(location);
+              
+              if (matchesQuery && matchesLocation) {
+                const jobUrl = `https://jobs.ashbyhq.com/${company}/${job.id}`;
+                companyJobs.push({
+                  job_url: jobUrl,
+                  job_url_hash: hashUrl(jobUrl),
+                  job_title: job.title || null,
+                  company_name: company.charAt(0).toUpperCase() + company.slice(1),
+                  ats_platform: 'ashbyhq',
+                  location,
+                  posting_date: job.publishedDate || null,
+                });
+              }
             }
           }
-        }`
-      };
-      
-      const data = await fetchJSON('https://jobs.ashbyhq.com/api/non-user-graphql?op=ApiJobBoardWithTeams', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(graphqlQuery),
-      });
-      
-      if (data?.data?.jobBoard?.jobs) {
-        for (const job of data.data.jobBoard.jobs) {
-          if (jobs.length >= limit) break;
-          
-          const title = job.title?.toLowerCase() || '';
-          const queryLower = query.toLowerCase();
-          const location = job.locationName || null;
-          
-          const matchesQuery = !queryLower || title.includes(queryLower);
-          const matchesLocation = !usaOnly || isUSALocation(location);
-          
-          if (matchesQuery && matchesLocation) {
-            const jobUrl = `https://jobs.ashbyhq.com/${company}/${job.id}`;
-            jobs.push({
-              job_url: jobUrl,
-              job_url_hash: hashUrl(jobUrl),
-              job_title: job.title || null,
-              company_name: company.charAt(0).toUpperCase() + company.slice(1),
-              ats_platform: 'ashbyhq',
-              location,
-              posting_date: job.publishedDate || null,
-            });
-          }
+          return companyJobs;
+        } catch {
+          return [];
+        }
+      })
+    );
+    
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        for (const job of result.value) {
+          if (jobs.length < limit) jobs.push(job);
         }
       }
-    } catch (err) {
-      // Silent fail
     }
   }
   
@@ -342,67 +779,53 @@ async function scrapeAshbyHQ(query: string, limit: number, usaOnly: boolean): Pr
   return jobs;
 }
 
-// Workday - USA's most popular enterprise ATS
-async function scrapeWorkday(query: string, limit: number, usaOnly: boolean): Promise<JobLink[]> {
-  const jobs: JobLink[] = [];
-  console.log(`[Workday] Searching for: ${query}`);
-  
-  // Major US companies using Workday
-  const companies = [
-    { name: 'amazon', tenant: 'amazon' },
-    { name: 'walmart', tenant: 'wd5.myworkdayjobs.com/walmart' },
-    { name: 'target', tenant: 'target' },
-    { name: 'netflix', tenant: 'netflix' },
-    { name: 'salesforce', tenant: 'salesforce' },
-    { name: 'adobe', tenant: 'adobe' },
-    { name: 'hp', tenant: 'hp' },
-    { name: 'cisco', tenant: 'cisco' },
-  ];
-  
-  // Workday requires authenticated API access, return empty for now
-  // This would need proper Workday API integration
-  console.log(`[Workday] Found ${jobs.length} jobs (requires API key for full access)`);
-  return jobs;
-}
-
-// Jobvite - HTML scraping with better patterns
+// Jobvite
 async function scrapeJobvite(query: string, limit: number, usaOnly: boolean): Promise<JobLink[]> {
   const jobs: JobLink[] = [];
-  console.log(`[Jobvite] Searching for: ${query}`);
+  console.log(`[Jobvite] Searching for: ${query}, companies: ${JOBVITE_COMPANIES.length}`);
   
-  // Verified Jobvite companies
-  const companies = ['zendesk', 'sprinklr', 'medallia', 'ringcentral', 'docusign'];
-  
-  for (const company of companies) {
-    if (jobs.length >= limit) break;
+  const batchSize = 10;
+  for (let i = 0; i < JOBVITE_COMPANIES.length && jobs.length < limit; i += batchSize) {
+    const batch = JOBVITE_COMPANIES.slice(i, i + batchSize);
     
-    try {
-      // Try the Jobvite API endpoint
-      const data = await fetchJSON(`https://jobs.jobvite.com/${company}/jobs?q=${encodeURIComponent(query)}&format=json`);
-      
-      if (data?.requisitions) {
-        for (const job of data.requisitions) {
-          if (jobs.length >= limit) break;
+    const results = await Promise.allSettled(
+      batch.map(async (company) => {
+        try {
+          const data = await fetchJSON(`https://jobs.jobvite.com/${company}/jobs?q=${encodeURIComponent(query)}&format=json`);
+          const companyJobs: JobLink[] = [];
           
-          const location = job.location || null;
-          const matchesLocation = !usaOnly || isUSALocation(location);
-          
-          if (matchesLocation) {
-            const jobUrl = `https://jobs.jobvite.com/${company}/job/${job.eId}`;
-            jobs.push({
-              job_url: jobUrl,
-              job_url_hash: hashUrl(jobUrl),
-              job_title: job.title || null,
-              company_name: company.charAt(0).toUpperCase() + company.slice(1),
-              ats_platform: 'jobvite',
-              location,
-              posting_date: job.postedDate || null,
-            });
+          if (data?.requisitions) {
+            for (const job of data.requisitions) {
+              const location = job.location || null;
+              const matchesLocation = !usaOnly || isUSALocation(location);
+              
+              if (matchesLocation) {
+                const jobUrl = `https://jobs.jobvite.com/${company}/job/${job.eId}`;
+                companyJobs.push({
+                  job_url: jobUrl,
+                  job_url_hash: hashUrl(jobUrl),
+                  job_title: job.title || null,
+                  company_name: company.charAt(0).toUpperCase() + company.slice(1),
+                  ats_platform: 'jobvite',
+                  location,
+                  posting_date: job.postedDate || null,
+                });
+              }
+            }
           }
+          return companyJobs;
+        } catch {
+          return [];
+        }
+      })
+    );
+    
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        for (const job of result.value) {
+          if (jobs.length < limit) jobs.push(job);
         }
       }
-    } catch (err) {
-      // Silent fail
     }
   }
   
@@ -410,61 +833,69 @@ async function scrapeJobvite(query: string, limit: number, usaOnly: boolean): Pr
   return jobs;
 }
 
-// JazzHR - uses embed API
+// JazzHR
 async function scrapeJazzHR(query: string, limit: number, usaOnly: boolean): Promise<JobLink[]> {
   const jobs: JobLink[] = [];
-  console.log(`[JazzHR] Searching for: ${query}`);
+  console.log(`[JazzHR] Searching for: ${query}, companies: ${JAZZHR_COMPANIES.length}`);
   
-  // JazzHR primarily used by SMBs, harder to scrape without specific board IDs
-  // Would need company-specific board IDs
-  
+  // JazzHR uses board IDs, limited access without them
   console.log(`[JazzHR] Found ${jobs.length} jobs`);
   return jobs;
 }
 
-// BambooHR - uses careers list API
+// BambooHR
 async function scrapeBambooHR(query: string, limit: number, usaOnly: boolean): Promise<JobLink[]> {
   const jobs: JobLink[] = [];
-  console.log(`[BambooHR] Searching for: ${query}`);
+  console.log(`[BambooHR] Searching for: ${query}, companies: ${BAMBOOHR_COMPANIES.length}`);
   
-  // Verified BambooHR companies
-  const companies = ['zapier', 'postman', 'invision', 'buffer', 'hotjar', 'basecamp'];
-  
-  for (const company of companies) {
-    if (jobs.length >= limit) break;
+  const batchSize = 10;
+  for (let i = 0; i < BAMBOOHR_COMPANIES.length && jobs.length < limit; i += batchSize) {
+    const batch = BAMBOOHR_COMPANIES.slice(i, i + batchSize);
     
-    try {
-      const data = await fetchJSON(`https://${company}.bamboohr.com/careers/list`);
-      
-      if (data?.result) {
-        for (const job of data.result) {
-          if (jobs.length >= limit) break;
+    const results = await Promise.allSettled(
+      batch.map(async (company) => {
+        try {
+          const data = await fetchJSON(`https://${company}.bamboohr.com/careers/list`);
+          const companyJobs: JobLink[] = [];
           
-          const title = job.jobOpeningName?.toLowerCase() || '';
-          const queryLower = query.toLowerCase();
-          const location = job.location?.city 
-            ? `${job.location.city}, ${job.location.state || job.location.country}` 
-            : null;
-          
-          const matchesQuery = !queryLower || title.includes(queryLower);
-          const matchesLocation = !usaOnly || isUSALocation(location);
-          
-          if (matchesQuery && matchesLocation) {
-            const jobUrl = `https://${company}.bamboohr.com/careers/${job.id}`;
-            jobs.push({
-              job_url: jobUrl,
-              job_url_hash: hashUrl(jobUrl),
-              job_title: job.jobOpeningName || null,
-              company_name: company.charAt(0).toUpperCase() + company.slice(1),
-              ats_platform: 'bamboohr',
-              location,
-              posting_date: job.dateCreated || null,
-            });
+          if (data?.result) {
+            for (const job of data.result) {
+              const title = job.jobOpeningName?.toLowerCase() || '';
+              const queryLower = query.toLowerCase();
+              const location = job.location?.city 
+                ? `${job.location.city}, ${job.location.state || job.location.country}` 
+                : null;
+              
+              const matchesQuery = !queryLower || title.includes(queryLower);
+              const matchesLocation = !usaOnly || isUSALocation(location);
+              
+              if (matchesQuery && matchesLocation) {
+                const jobUrl = `https://${company}.bamboohr.com/careers/${job.id}`;
+                companyJobs.push({
+                  job_url: jobUrl,
+                  job_url_hash: hashUrl(jobUrl),
+                  job_title: job.jobOpeningName || null,
+                  company_name: company.charAt(0).toUpperCase() + company.slice(1),
+                  ats_platform: 'bamboohr',
+                  location,
+                  posting_date: job.dateCreated || null,
+                });
+              }
+            }
           }
+          return companyJobs;
+        } catch {
+          return [];
+        }
+      })
+    );
+    
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        for (const job of result.value) {
+          if (jobs.length < limit) jobs.push(job);
         }
       }
-    } catch (err) {
-      // Silent fail
     }
   }
   
@@ -472,38 +903,28 @@ async function scrapeBambooHR(query: string, limit: number, usaOnly: boolean): P
   return jobs;
 }
 
-// iCIMS - Popular US Enterprise ATS
+// Workday (requires API access)
+async function scrapeWorkday(query: string, limit: number, usaOnly: boolean): Promise<JobLink[]> {
+  console.log(`[Workday] Requires API key for full access`);
+  return [];
+}
+
+// iCIMS (requires portal configuration)
 async function scrapeICIMS(query: string, limit: number, usaOnly: boolean): Promise<JobLink[]> {
-  const jobs: JobLink[] = [];
-  console.log(`[iCIMS] Searching for: ${query}`);
-  
-  // iCIMS requires portal-specific configuration
-  // Would need company-specific portal IDs
-  
-  console.log(`[iCIMS] Found ${jobs.length} jobs`);
-  return jobs;
+  console.log(`[iCIMS] Requires portal-specific configuration`);
+  return [];
 }
 
-// Taleo (Oracle) - Popular US Enterprise ATS
+// Taleo (requires authenticated API)
 async function scrapeTaleo(query: string, limit: number, usaOnly: boolean): Promise<JobLink[]> {
-  const jobs: JobLink[] = [];
-  console.log(`[Taleo] Searching for: ${query}`);
-  
-  // Taleo requires authenticated API access
-  
-  console.log(`[Taleo] Found ${jobs.length} jobs`);
-  return jobs;
+  console.log(`[Taleo] Requires authenticated API access`);
+  return [];
 }
 
-// SuccessFactors (SAP) - Popular US Enterprise ATS
+// SuccessFactors (requires authenticated API)
 async function scrapeSuccessFactors(query: string, limit: number, usaOnly: boolean): Promise<JobLink[]> {
-  const jobs: JobLink[] = [];
-  console.log(`[SuccessFactors] Searching for: ${query}`);
-  
-  // SuccessFactors requires authenticated API access
-  
-  console.log(`[SuccessFactors] Found ${jobs.length} jobs`);
-  return jobs;
+  console.log(`[SuccessFactors] Requires authenticated API access`);
+  return [];
 }
 
 // Main scraper function
@@ -583,9 +1004,9 @@ Deno.serve(async (req) => {
       limit = 400,
       offset = 0,
       filterDuplicates = true,
-      dedupeTableId = null, // New: specific table to dedupe against
-      saveToTableId = null, // New: table to save results to
-      usaOnly = false, // New: USA location filter
+      dedupeTableId = null,
+      saveToTableId = null,
+      usaOnly = false,
       sessionId = null
     } = body;
 
@@ -602,7 +1023,6 @@ Deno.serve(async (req) => {
     if (filterDuplicates) {
       try {
         if (dedupeTableId) {
-          // Dedupe against specific user table
           const hashResponse = await fetch(
             `${supabaseUrl}/rest/v1/user_table_jobs?table_id=eq.${dedupeTableId}&select=job_url_hash`,
             {
@@ -619,7 +1039,6 @@ Deno.serve(async (req) => {
             console.log(`Loaded ${existingHashes.size} hashes from table ${dedupeTableId}`);
           }
         } else {
-          // Dedupe against global job_links table
           const hashResponse = await fetch(
             `${supabaseUrl}/rest/v1/job_links?select=job_url_hash`,
             {
@@ -701,31 +1120,17 @@ Deno.serve(async (req) => {
 
       // Update job count
       await fetch(
-        `${supabaseUrl}/rest/v1/rpc/update_table_job_count`,
+        `${supabaseUrl}/rest/v1/user_job_tables?id=eq.${saveToTableId}`,
         {
-          method: 'POST',
+          method: 'PATCH',
           headers: {
             'apikey': supabaseKey,
             'Authorization': `Bearer ${supabaseKey}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ table_id: saveToTableId }),
+          body: JSON.stringify({ job_count: jobs.length }),
         }
-      ).catch(() => {
-        // Fallback: update directly
-        fetch(
-          `${supabaseUrl}/rest/v1/user_job_tables?id=eq.${saveToTableId}`,
-          {
-            method: 'PATCH',
-            headers: {
-              'apikey': supabaseKey,
-              'Authorization': `Bearer ${supabaseKey}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ job_count: jobs.length }),
-          }
-        );
-      });
+      ).catch(() => {});
     }
 
     // Also save to global job_links for general deduplication
