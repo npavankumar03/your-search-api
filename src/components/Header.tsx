@@ -23,6 +23,9 @@ const Header = () => {
           <Link to="/docs" className="text-muted-foreground hover:text-foreground transition-colors">
             Documentation
           </Link>
+          <Link to="/job-scraper" className="text-muted-foreground hover:text-foreground transition-colors">
+            Job Scraper
+          </Link>
           <a href="#playground" className="text-muted-foreground hover:text-foreground transition-colors">
             Playground
           </a>

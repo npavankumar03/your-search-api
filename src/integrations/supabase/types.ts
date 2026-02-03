@@ -88,6 +88,84 @@ export type Database = {
           },
         ]
       }
+      job_links: {
+        Row: {
+          ats_platform: string
+          company_name: string | null
+          created_at: string
+          id: string
+          job_title: string | null
+          job_url: string
+          job_url_hash: string
+          location: string | null
+          posting_date: string | null
+          search_query: string | null
+        }
+        Insert: {
+          ats_platform: string
+          company_name?: string | null
+          created_at?: string
+          id?: string
+          job_title?: string | null
+          job_url: string
+          job_url_hash: string
+          location?: string | null
+          posting_date?: string | null
+          search_query?: string | null
+        }
+        Update: {
+          ats_platform?: string
+          company_name?: string | null
+          created_at?: string
+          id?: string
+          job_title?: string | null
+          job_url?: string
+          job_url_hash?: string
+          location?: string | null
+          posting_date?: string | null
+          search_query?: string | null
+        }
+        Relationships: []
+      }
+      scrape_sessions: {
+        Row: {
+          completed_at: string | null
+          duplicates_filtered: number
+          error_message: string | null
+          id: string
+          jobs_found: number
+          platforms: string[]
+          requested_limit: number
+          search_query: string
+          started_at: string
+          status: string
+        }
+        Insert: {
+          completed_at?: string | null
+          duplicates_filtered?: number
+          error_message?: string | null
+          id?: string
+          jobs_found?: number
+          platforms: string[]
+          requested_limit?: number
+          search_query: string
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          completed_at?: string | null
+          duplicates_filtered?: number
+          error_message?: string | null
+          id?: string
+          jobs_found?: number
+          platforms?: string[]
+          requested_limit?: number
+          search_query?: string
+          started_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
       search_cache: {
         Row: {
           created_at: string
