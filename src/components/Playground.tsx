@@ -3,13 +3,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Play, Copy, Check, Loader2 } from 'lucide-react';
-
-// API URL - uses environment variable or defaults to localhost for development
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { supabase } from '@/integrations/supabase/client';
 
 const Playground = () => {
   const [query, setQuery] = useState('best coffee shops in NYC');
-  const [engine, setEngine] = useState('google');
+  const [engine, setEngine] = useState('duckduckgo');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
@@ -26,20 +24,18 @@ const Playground = () => {
     setResult(null);
 
     try {
-      const response = await fetch(`${API_URL}/search`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ query, engine }),
+      const { data, error: fnError } = await supabase.functions.invoke('search', {
+        body: { query, engine },
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Search failed');
+      if (fnError) {
+        throw new Error(fnError.message || 'Search failed');
       }
 
-      const data = await response.json();
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
       setResult(data);
     } catch (err: any) {
       setError(err.message || 'Search failed');
@@ -49,8 +45,10 @@ const Playground = () => {
   };
 
   const copyCode = () => {
-    const code = `curl -X POST "${API_URL}/search" \\
+    const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/search`;
+    const code = `curl -X POST "${apiUrl}" \\
   -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}" \\
   -d '{"query": "${query}", "engine": "${engine}"}'`;
     
     navigator.clipboard.writeText(code);
@@ -90,10 +88,10 @@ const Playground = () => {
                   <SelectTrigger className="bg-secondary border-border">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="google">Google</SelectItem>
-                    <SelectItem value="duckduckgo">DuckDuckGo</SelectItem>
+                <SelectContent>
+                    <SelectItem value="duckduckgo">DuckDuckGo (Recommended)</SelectItem>
                     <SelectItem value="bing">Bing</SelectItem>
+                    <SelectItem value="google">Google</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
