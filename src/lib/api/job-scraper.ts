@@ -34,7 +34,18 @@ export interface ScrapeOptions {
   limit: number;
   offset?: number;
   filterDuplicates?: boolean;
+  dedupeTableId?: string | null;
+  saveToTableId?: string | null;
+  usaOnly?: boolean;
   sessionId?: string | null;
+}
+
+export interface UserJobTable {
+  id: string;
+  name: string;
+  description: string | null;
+  created_at: string;
+  job_count: number;
 }
 
 export const ATS_PLATFORMS = [
@@ -45,6 +56,11 @@ export const ATS_PLATFORMS = [
   { id: 'jobvite', name: 'Jobvite', color: '#f97316' },
   { id: 'jazzhr', name: 'JazzHR', color: '#ec4899' },
   { id: 'bamboohr', name: 'BambooHR', color: '#22c55e' },
+  // Additional USA ATS platforms
+  { id: 'workday', name: 'Workday', color: '#0066cc' },
+  { id: 'icims', name: 'iCIMS', color: '#00a5e0' },
+  { id: 'taleo', name: 'Taleo (Oracle)', color: '#f80000' },
+  { id: 'successfactors', name: 'SuccessFactors (SAP)', color: '#0faaff' },
 ];
 
 export const LIMIT_OPTIONS = [
@@ -62,6 +78,9 @@ export async function scrapeJobs(options: ScrapeOptions): Promise<ScrapeResponse
       limit: options.limit,
       offset: options.offset || 0,
       filterDuplicates: options.filterDuplicates ?? true,
+      dedupeTableId: options.dedupeTableId,
+      saveToTableId: options.saveToTableId,
+      usaOnly: options.usaOnly ?? false,
       sessionId: options.sessionId,
     },
   });
@@ -86,6 +105,50 @@ export async function fetchMoreJobs(sessionId: string, offset: number): Promise<
   }
 
   return data;
+}
+
+// User Job Tables API
+export async function getUserJobTables(): Promise<UserJobTable[]> {
+  const { data, error } = await supabase
+    .from('user_job_tables')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Failed to fetch user job tables:', error);
+    return [];
+  }
+
+  return data || [];
+}
+
+export async function createUserJobTable(name: string, description?: string): Promise<UserJobTable | null> {
+  const { data, error } = await supabase
+    .from('user_job_tables')
+    .insert({ name, description })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Failed to create user job table:', error);
+    return null;
+  }
+
+  return data;
+}
+
+export async function deleteUserJobTable(id: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('user_job_tables')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Failed to delete user job table:', error);
+    return false;
+  }
+
+  return true;
 }
 
 export function generateCSV(jobs: JobLink[]): string {

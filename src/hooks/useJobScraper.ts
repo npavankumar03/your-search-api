@@ -13,6 +13,16 @@ interface UseJobScraperState {
   };
 }
 
+interface ScrapeParams {
+  query: string;
+  platforms: string[];
+  limit: number;
+  filterDuplicates?: boolean;
+  dedupeTableId?: string | null;
+  saveToTableId?: string | null;
+  usaOnly?: boolean;
+}
+
 export function useJobScraper() {
   const [state, setState] = useState<UseJobScraperState>({
     jobs: [],
@@ -22,7 +32,7 @@ export function useJobScraper() {
     progress: { current: 0, total: 0, percentage: 0 },
   });
 
-  const scrape = useCallback(async (options: Omit<ScrapeOptions, 'offset' | 'sessionId'>) => {
+  const scrape = useCallback(async (options: ScrapeParams) => {
     setState(prev => ({
       ...prev,
       isLoading: true,
@@ -43,6 +53,10 @@ export function useJobScraper() {
           ...options,
           offset,
           sessionId,
+          filterDuplicates: options.filterDuplicates ?? true,
+          dedupeTableId: options.dedupeTableId,
+          saveToTableId: options.saveToTableId,
+          usaOnly: options.usaOnly ?? false,
         });
 
         if (!response.success || !response.jobs) {
@@ -67,7 +81,7 @@ export function useJobScraper() {
           },
         }));
 
-        // Small delay between batches to avoid overwhelming the UI
+        // Small delay between batches
         if (hasMore) {
           await new Promise(resolve => setTimeout(resolve, 100));
         }
