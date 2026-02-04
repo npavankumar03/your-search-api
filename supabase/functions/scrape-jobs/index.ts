@@ -51,13 +51,32 @@ interface JobLink {
   posting_date: string | null;
 }
 
-// USA location check
+// USA location check - STRICT mode
 function isUSALocation(location: string | null | undefined): boolean {
-  if (!location) return true; // Include if no location specified
-  const loc = location.toLowerCase();
+  if (!location) return false; // REJECT jobs without location when USA filter is on
+  const loc = location.toLowerCase().trim();
+  
+  // Exclude explicit non-USA locations
+  const nonUSAPatterns = [
+    'canada', 'uk', 'united kingdom', 'london', 'germany', 'berlin', 'india',
+    'australia', 'sydney', 'melbourne', 'france', 'paris', 'spain', 'italy',
+    'netherlands', 'amsterdam', 'ireland', 'dublin', 'singapore', 'japan',
+    'tokyo', 'china', 'beijing', 'shanghai', 'brazil', 'mexico', 'argentina',
+    'poland', 'portugal', 'sweden', 'norway', 'denmark', 'finland', 'austria',
+    'switzerland', 'belgium', 'czech', 'romania', 'hungary', 'israel', 'tel aviv',
+    'south africa', 'philippines', 'vietnam', 'thailand', 'indonesia', 'malaysia',
+    'new zealand', 'auckland', 'wellington', 'ontario', 'british columbia',
+    'quebec', 'alberta', 'toronto', 'vancouver', 'montreal', 'calgary',
+  ];
+  
+  // Check if location explicitly mentions non-USA
+  if (nonUSAPatterns.some(pattern => loc.includes(pattern))) {
+    return false;
+  }
+  
   const usaPatterns = [
-    'united states', 'usa', 'u.s.', 'us-', ', us', 'remote',
-    // US States
+    'united states', 'usa', 'u.s.a', 'u.s.', 
+    // US States (full names)
     'alabama', 'alaska', 'arizona', 'arkansas', 'california', 'colorado',
     'connecticut', 'delaware', 'florida', 'georgia', 'hawaii', 'idaho',
     'illinois', 'indiana', 'iowa', 'kansas', 'kentucky', 'louisiana',
@@ -68,20 +87,60 @@ function isUSALocation(location: string | null | undefined): boolean {
     'rhode island', 'south carolina', 'south dakota', 'tennessee', 'texas',
     'utah', 'vermont', 'virginia', 'washington', 'west virginia',
     'wisconsin', 'wyoming',
-    // State abbreviations with comma before
-    ', al', ', ak', ', az', ', ar', ', ca', ', co', ', ct', ', de', ', fl',
-    ', ga', ', hi', ', id', ', il', ', in', ', ia', ', ks', ', ky', ', la',
-    ', me', ', md', ', ma', ', mi', ', mn', ', ms', ', mo', ', mt', ', ne',
-    ', nv', ', nh', ', nj', ', nm', ', ny', ', nc', ', nd', ', oh', ', ok',
-    ', or', ', pa', ', ri', ', sc', ', sd', ', tn', ', tx', ', ut', ', vt',
-    ', va', ', wa', ', wv', ', wi', ', wy',
     // Major US cities
     'san francisco', 'new york', 'los angeles', 'chicago', 'seattle',
     'austin', 'boston', 'denver', 'atlanta', 'miami', 'dallas',
     'houston', 'phoenix', 'philadelphia', 'san diego', 'san jose',
     'portland', 'nashville', 'raleigh', 'charlotte', 'baltimore',
+    'detroit', 'minneapolis', 'st. louis', 'cleveland', 'pittsburgh',
+    'sacramento', 'kansas city', 'salt lake', 'san antonio', 'indianapolis',
+    'columbus', 'milwaukee', 'las vegas', 'orlando', 'tampa', 'memphis',
+    'louisville', 'richmond', 'hartford', 'providence', 'buffalo', 'rochester',
   ];
-  return usaPatterns.some(pattern => loc.includes(pattern));
+  
+  // Check for explicit USA match
+  if (usaPatterns.some(pattern => loc.includes(pattern))) {
+    return true;
+  }
+  
+  // Check for state abbreviations at end of string (e.g., "New York, NY" or "Austin, TX")
+  const stateAbbrevMatch = loc.match(/,\s*(al|ak|az|ar|ca|co|ct|de|fl|ga|hi|id|il|in|ia|ks|ky|la|me|md|ma|mi|mn|ms|mo|mt|ne|nv|nh|nj|nm|ny|nc|nd|oh|ok|or|pa|ri|sc|sd|tn|tx|ut|vt|va|wa|wv|wi|wy)$/);
+  if (stateAbbrevMatch) {
+    return true;
+  }
+  
+  // Handle Remote jobs more permissively for USA context
+  if (loc.includes('remote')) {
+    // Accept if paired with US indicator
+    if (loc.includes('us') || loc.includes('usa') || loc.includes('united states') || loc.includes('america')) {
+      return true;
+    }
+    // Accept generic "remote" as potentially US
+    if (loc === 'remote' || loc === 'remote - anywhere' || loc === 'fully remote' || loc === 'work from home') {
+      return true;
+    }
+    // Reject if explicitly mentions other regions
+    if (nonUSAPatterns.some(pattern => loc.includes(pattern))) {
+      return false;
+    }
+    // Accept ambiguous remote (benefit of doubt for US companies)
+    return true;
+  }
+  
+  return false; // Default to reject if no clear USA indication
+}
+
+// Check if job was posted within last 30 days
+function isRecentJob(postingDate: string | null | undefined): boolean {
+  if (!postingDate) return true; // Include if no date (can't filter)
+  try {
+    const posted = new Date(postingDate);
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    return posted >= thirtyDaysAgo;
+  } catch {
+    return true; // Include if date parsing fails
+  }
 }
 
 // ===================== COMPANY LISTS FROM CSV =====================
@@ -527,11 +586,13 @@ async function scrapeGreenhouse(query: string, limit: number, usaOnly: boolean):
               const dept = job.departments?.[0]?.name?.toLowerCase() || '';
               const queryLower = query.toLowerCase();
               const location = job.location?.name || null;
+              const postingDate = job.updated_at || null;
               
               const matchesQuery = !queryLower || title.includes(queryLower) || dept.includes(queryLower);
               const matchesLocation = !usaOnly || isUSALocation(location);
+              const isRecent = isRecentJob(postingDate);
               
-              if (matchesQuery && matchesLocation) {
+              if (matchesQuery && matchesLocation && isRecent) {
                 const jobUrl = job.absolute_url || `https://boards.greenhouse.io/${company}/jobs/${job.id}`;
                 companyJobs.push({
                   job_url: jobUrl,
@@ -540,7 +601,7 @@ async function scrapeGreenhouse(query: string, limit: number, usaOnly: boolean):
                   company_name: company.charAt(0).toUpperCase() + company.slice(1),
                   ats_platform: 'greenhouse',
                   location,
-                  posting_date: job.updated_at || null,
+                  posting_date: postingDate,
                 });
               }
             }
@@ -591,11 +652,13 @@ async function scrapeLever(query: string, limit: number, usaOnly: boolean): Prom
               const categories = JSON.stringify(job.categories || {}).toLowerCase();
               const queryLower = query.toLowerCase();
               const location = job.categories?.location || null;
+              const postingDate = job.createdAt ? new Date(job.createdAt).toISOString() : null;
               
               const matchesQuery = !queryLower || title.includes(queryLower) || categories.includes(queryLower);
               const matchesLocation = !usaOnly || isUSALocation(location);
+              const isRecent = isRecentJob(postingDate);
               
-              if (matchesQuery && matchesLocation) {
+              if (matchesQuery && matchesLocation && isRecent) {
                 const jobUrl = job.hostedUrl || job.applyUrl;
                 if (jobUrl) {
                   companyJobs.push({
@@ -605,7 +668,7 @@ async function scrapeLever(query: string, limit: number, usaOnly: boolean): Prom
                     company_name: company.charAt(0).toUpperCase() + company.slice(1),
                     ats_platform: 'lever',
                     location,
-                    posting_date: job.createdAt ? new Date(job.createdAt).toISOString() : null,
+                    posting_date: postingDate,
                   });
                 }
               }
@@ -659,10 +722,12 @@ async function scrapeSmartRecruiters(query: string, limit: number, usaOnly: bool
               const location = job.location?.city 
                 ? `${job.location.city}, ${job.location.country}` 
                 : job.location?.country || null;
+              const postingDate = job.releasedDate || null;
               
               const matchesLocation = !usaOnly || isUSALocation(location);
+              const isRecent = isRecentJob(postingDate);
               
-              if (matchesLocation) {
+              if (matchesLocation && isRecent) {
                 const jobUrl = job.ref || `https://jobs.smartrecruiters.com/${company}/${job.id}`;
                 companyJobs.push({
                   job_url: jobUrl,
@@ -671,7 +736,7 @@ async function scrapeSmartRecruiters(query: string, limit: number, usaOnly: bool
                   company_name: job.company?.name || company,
                   ats_platform: 'smartrecruiters',
                   location,
-                  posting_date: job.releasedDate || null,
+                  posting_date: postingDate,
                 });
               }
             }
@@ -741,11 +806,13 @@ async function scrapeAshbyHQ(query: string, limit: number, usaOnly: boolean): Pr
               const title = job.title?.toLowerCase() || '';
               const queryLower = query.toLowerCase();
               const location = job.locationName || null;
+              const postingDate = job.publishedDate || null;
               
               const matchesQuery = !queryLower || title.includes(queryLower);
               const matchesLocation = !usaOnly || isUSALocation(location);
+              const isRecent = isRecentJob(postingDate);
               
-              if (matchesQuery && matchesLocation) {
+              if (matchesQuery && matchesLocation && isRecent) {
                 const jobUrl = `https://jobs.ashbyhq.com/${company}/${job.id}`;
                 companyJobs.push({
                   job_url: jobUrl,
@@ -754,7 +821,7 @@ async function scrapeAshbyHQ(query: string, limit: number, usaOnly: boolean): Pr
                   company_name: company.charAt(0).toUpperCase() + company.slice(1),
                   ats_platform: 'ashbyhq',
                   location,
-                  posting_date: job.publishedDate || null,
+                  posting_date: postingDate,
                 });
               }
             }
@@ -797,9 +864,11 @@ async function scrapeJobvite(query: string, limit: number, usaOnly: boolean): Pr
           if (data?.requisitions) {
             for (const job of data.requisitions) {
               const location = job.location || null;
+              const postingDate = job.postedDate || null;
               const matchesLocation = !usaOnly || isUSALocation(location);
+              const isRecent = isRecentJob(postingDate);
               
-              if (matchesLocation) {
+              if (matchesLocation && isRecent) {
                 const jobUrl = `https://jobs.jobvite.com/${company}/job/${job.eId}`;
                 companyJobs.push({
                   job_url: jobUrl,
@@ -808,7 +877,7 @@ async function scrapeJobvite(query: string, limit: number, usaOnly: boolean): Pr
                   company_name: company.charAt(0).toUpperCase() + company.slice(1),
                   ats_platform: 'jobvite',
                   location,
-                  posting_date: job.postedDate || null,
+                  posting_date: postingDate,
                 });
               }
             }
@@ -865,11 +934,13 @@ async function scrapeBambooHR(query: string, limit: number, usaOnly: boolean): P
               const location = job.location?.city 
                 ? `${job.location.city}, ${job.location.state || job.location.country}` 
                 : null;
+              const postingDate = job.dateCreated || null;
               
               const matchesQuery = !queryLower || title.includes(queryLower);
               const matchesLocation = !usaOnly || isUSALocation(location);
+              const isRecent = isRecentJob(postingDate);
               
-              if (matchesQuery && matchesLocation) {
+              if (matchesQuery && matchesLocation && isRecent) {
                 const jobUrl = `https://${company}.bamboohr.com/careers/${job.id}`;
                 companyJobs.push({
                   job_url: jobUrl,
@@ -878,7 +949,7 @@ async function scrapeBambooHR(query: string, limit: number, usaOnly: boolean): P
                   company_name: company.charAt(0).toUpperCase() + company.slice(1),
                   ats_platform: 'bamboohr',
                   location,
-                  posting_date: job.dateCreated || null,
+                  posting_date: postingDate,
                 });
               }
             }
