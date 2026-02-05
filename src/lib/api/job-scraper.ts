@@ -36,7 +36,6 @@ export interface ScrapeOptions {
   filterDuplicates?: boolean;
   dedupeTableId?: string | null;
   saveToTableId?: string | null;
-  usaOnly?: boolean;
   sessionId?: string | null;
 }
 
@@ -80,7 +79,6 @@ export async function scrapeJobs(options: ScrapeOptions): Promise<ScrapeResponse
       filterDuplicates: options.filterDuplicates ?? true,
       dedupeTableId: options.dedupeTableId,
       saveToTableId: options.saveToTableId,
-      usaOnly: options.usaOnly ?? false,
       sessionId: options.sessionId,
     },
   });

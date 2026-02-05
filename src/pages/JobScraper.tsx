@@ -18,7 +18,6 @@ const JobScraper = () => {
     filterDuplicates: boolean;
     dedupeTableId: string | null;
     saveToTableId: string | null;
-    usaOnly: boolean;
   }) => {
     await scrape(options);
   };

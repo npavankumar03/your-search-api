@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { Search, Settings2, MapPin } from 'lucide-react';
+import { Search, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -28,7 +27,6 @@ interface JobScraperFormProps {
     filterDuplicates: boolean;
     dedupeTableId: string | null;
     saveToTableId: string | null;
-    usaOnly: boolean;
   }) => void;
   isLoading: boolean;
 }
@@ -44,7 +42,6 @@ export function JobScraperForm({ onSubmit, isLoading }: JobScraperFormProps) {
   const [showTableOptions, setShowTableOptions] = useState(false);
   const [dedupeTableId, setDedupeTableId] = useState<string | null>(null);
   const [saveToTableId, setSaveToTableId] = useState<string | null>(null);
-  const [usaOnly, setUsaOnly] = useState(false);
 
   const handlePlatformToggle = (platformId: string) => {
     setSelectedPlatforms(prev =>
@@ -65,7 +62,6 @@ export function JobScraperForm({ onSubmit, isLoading }: JobScraperFormProps) {
       filterDuplicates,
       dedupeTableId,
       saveToTableId,
-      usaOnly,
     });
   };
 
@@ -115,21 +111,6 @@ export function JobScraperForm({ onSubmit, isLoading }: JobScraperFormProps) {
               ))}
             </SelectContent>
           </Select>
-        </div>
-
-        {/* USA Only Filter */}
-        <div className="flex items-end">
-          <div className="flex items-center space-x-2 p-3 rounded-lg bg-secondary/30 border border-border/30">
-            <MapPin className="h-4 w-4 text-primary" />
-            <Label htmlFor="usaOnly" className="text-sm text-foreground/80 cursor-pointer">
-              USA Only
-            </Label>
-            <Switch
-              id="usaOnly"
-              checked={usaOnly}
-              onCheckedChange={setUsaOnly}
-            />
-          </div>
         </div>
       </div>
 

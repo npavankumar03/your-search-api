@@ -51,83 +51,93 @@ interface JobLink {
   posting_date: string | null;
 }
 
-// USA location check - STRICT mode
+// USA location check - ACCEPT jobs without location (benefit of doubt), REJECT explicit non-USA
 function isUSALocation(location: string | null | undefined): boolean {
-  if (!location) return false; // REJECT jobs without location when USA filter is on
+  // If no location specified, ACCEPT (benefit of doubt for US companies)
+  if (!location || location.trim() === '') return true;
   const loc = location.toLowerCase().trim();
   
-  // Exclude explicit non-USA locations
+  // Explicit non-USA locations to REJECT
   const nonUSAPatterns = [
-    'canada', 'uk', 'united kingdom', 'london', 'germany', 'berlin', 'india',
-    'australia', 'sydney', 'melbourne', 'france', 'paris', 'spain', 'italy',
-    'netherlands', 'amsterdam', 'ireland', 'dublin', 'singapore', 'japan',
-    'tokyo', 'china', 'beijing', 'shanghai', 'brazil', 'mexico', 'argentina',
-    'poland', 'portugal', 'sweden', 'norway', 'denmark', 'finland', 'austria',
-    'switzerland', 'belgium', 'czech', 'romania', 'hungary', 'israel', 'tel aviv',
-    'south africa', 'philippines', 'vietnam', 'thailand', 'indonesia', 'malaysia',
-    'new zealand', 'auckland', 'wellington', 'ontario', 'british columbia',
-    'quebec', 'alberta', 'toronto', 'vancouver', 'montreal', 'calgary',
+    // Canada
+    'canada', 'toronto', 'vancouver', 'montreal', 'calgary', 'ottawa', 'edmonton',
+    'ontario', 'british columbia', 'quebec', 'alberta', 'manitoba', 'saskatchewan',
+    // UK & Europe
+    'uk', 'united kingdom', 'london', 'manchester', 'birmingham', 'england', 'scotland', 'wales',
+    'germany', 'berlin', 'munich', 'frankfurt', 'hamburg',
+    'france', 'paris', 'lyon', 'marseille',
+    'spain', 'madrid', 'barcelona',
+    'italy', 'rome', 'milan',
+    'netherlands', 'amsterdam', 'rotterdam',
+    'ireland', 'dublin',
+    'poland', 'warsaw', 'krakow',
+    'portugal', 'lisbon',
+    'sweden', 'stockholm',
+    'norway', 'oslo',
+    'denmark', 'copenhagen',
+    'finland', 'helsinki',
+    'austria', 'vienna',
+    'switzerland', 'zurich', 'geneva',
+    'belgium', 'brussels',
+    'czech', 'prague',
+    'romania', 'bucharest',
+    'hungary', 'budapest',
+    // Middle East & Africa
+    'israel', 'tel aviv',
+    'south africa', 'johannesburg', 'cape town',
+    'uae', 'dubai', 'abu dhabi',
+    // Asia Pacific
+    'india', 'bangalore', 'mumbai', 'delhi', 'hyderabad', 'chennai', 'pune', 'kolkata', 'noida', 'gurgaon',
+    'china', 'beijing', 'shanghai', 'shenzhen', 'guangzhou', 'hangzhou',
+    'japan', 'tokyo', 'osaka',
+    'singapore',
+    'australia', 'sydney', 'melbourne', 'brisbane', 'perth',
+    'new zealand', 'auckland', 'wellington',
+    'philippines', 'manila',
+    'vietnam', 'ho chi minh', 'hanoi',
+    'thailand', 'bangkok',
+    'indonesia', 'jakarta',
+    'malaysia', 'kuala lumpur',
+    'taiwan', 'taipei',
+    'hong kong',
+    'korea', 'seoul',
+    // Latin America
+    'brazil', 'sao paulo', 'rio',
+    'mexico', 'mexico city', 'guadalajara',
+    'argentina', 'buenos aires',
+    'colombia', 'bogota', 'medellin',
+    'chile', 'santiago',
+    'peru', 'lima',
+    // EMEA / APAC / LATAM region codes
+    'emea', 'apac', 'latam', 'europe', 'asia', 'eu only', 'uk only',
   ];
   
-  // Check if location explicitly mentions non-USA
+  // REJECT if location explicitly mentions non-USA
   if (nonUSAPatterns.some(pattern => loc.includes(pattern))) {
     return false;
   }
   
-  const usaPatterns = [
-    'united states', 'usa', 'u.s.a', 'u.s.', 
-    // US States (full names)
-    'alabama', 'alaska', 'arizona', 'arkansas', 'california', 'colorado',
-    'connecticut', 'delaware', 'florida', 'georgia', 'hawaii', 'idaho',
-    'illinois', 'indiana', 'iowa', 'kansas', 'kentucky', 'louisiana',
-    'maine', 'maryland', 'massachusetts', 'michigan', 'minnesota',
-    'mississippi', 'missouri', 'montana', 'nebraska', 'nevada',
-    'new hampshire', 'new jersey', 'new mexico', 'new york', 'north carolina',
-    'north dakota', 'ohio', 'oklahoma', 'oregon', 'pennsylvania',
-    'rhode island', 'south carolina', 'south dakota', 'tennessee', 'texas',
-    'utah', 'vermont', 'virginia', 'washington', 'west virginia',
-    'wisconsin', 'wyoming',
-    // Major US cities
-    'san francisco', 'new york', 'los angeles', 'chicago', 'seattle',
-    'austin', 'boston', 'denver', 'atlanta', 'miami', 'dallas',
-    'houston', 'phoenix', 'philadelphia', 'san diego', 'san jose',
-    'portland', 'nashville', 'raleigh', 'charlotte', 'baltimore',
-    'detroit', 'minneapolis', 'st. louis', 'cleveland', 'pittsburgh',
-    'sacramento', 'kansas city', 'salt lake', 'san antonio', 'indianapolis',
-    'columbus', 'milwaukee', 'las vegas', 'orlando', 'tampa', 'memphis',
-    'louisville', 'richmond', 'hartford', 'providence', 'buffalo', 'rochester',
-  ];
+  // ACCEPT - if not explicitly non-USA, assume USA (these are US companies mostly)
+  // Also explicitly match USA patterns for certainty
+  const usaPatterns = ['united states', 'usa', 'u.s.a', 'u.s.', 'america'];
   
-  // Check for explicit USA match
   if (usaPatterns.some(pattern => loc.includes(pattern))) {
     return true;
   }
   
-  // Check for state abbreviations at end of string (e.g., "New York, NY" or "Austin, TX")
-  const stateAbbrevMatch = loc.match(/,\s*(al|ak|az|ar|ca|co|ct|de|fl|ga|hi|id|il|in|ia|ks|ky|la|me|md|ma|mi|mn|ms|mo|mt|ne|nv|nh|nj|nm|ny|nc|nd|oh|ok|or|pa|ri|sc|sd|tn|tx|ut|vt|va|wa|wv|wi|wy)$/);
+  // Check for US state abbreviations
+  const stateAbbrevMatch = loc.match(/(^|,\s*|\s)(al|ak|az|ar|ca|co|ct|de|fl|ga|hi|id|il|in|ia|ks|ky|la|me|md|ma|mi|mn|ms|mo|mt|ne|nv|nh|nj|nm|ny|nc|nd|oh|ok|or|pa|ri|sc|sd|tn|tx|ut|vt|va|wa|wv|wi|wy)(\s|,|$)/i);
   if (stateAbbrevMatch) {
     return true;
   }
   
-  // Handle Remote jobs more permissively for USA context
+  // Remote jobs - ACCEPT (most are US-based from US companies)
   if (loc.includes('remote')) {
-    // Accept if paired with US indicator
-    if (loc.includes('us') || loc.includes('usa') || loc.includes('united states') || loc.includes('america')) {
-      return true;
-    }
-    // Accept generic "remote" as potentially US
-    if (loc === 'remote' || loc === 'remote - anywhere' || loc === 'fully remote' || loc === 'work from home') {
-      return true;
-    }
-    // Reject if explicitly mentions other regions
-    if (nonUSAPatterns.some(pattern => loc.includes(pattern))) {
-      return false;
-    }
-    // Accept ambiguous remote (benefit of doubt for US companies)
     return true;
   }
   
-  return false; // Default to reject if no clear USA indication
+  // DEFAULT: ACCEPT - benefit of doubt for US company job boards
+  return true;
 }
 
 // Check if job was posted within last 30 days
@@ -1078,7 +1088,7 @@ Deno.serve(async (req) => {
       filterDuplicates = true,
       dedupeTableId = null,
       saveToTableId = null,
-      usaOnly = false,
+      usaOnly = true,  // Always USA-only by default
       sessionId = null
     } = body;
 
