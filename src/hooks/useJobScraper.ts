@@ -20,7 +20,6 @@ interface ScrapeParams {
   filterDuplicates?: boolean;
   dedupeTableId?: string | null;
   saveToTableId?: string | null;
-  usaOnly?: boolean;
 }
 
 export function useJobScraper() {
@@ -56,7 +55,6 @@ export function useJobScraper() {
           filterDuplicates: options.filterDuplicates ?? true,
           dedupeTableId: options.dedupeTableId,
           saveToTableId: options.saveToTableId,
-          usaOnly: options.usaOnly ?? false,
         });
 
         if (!response.success || !response.jobs) {
