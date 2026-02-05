@@ -728,7 +728,8 @@ async function scrapeSmartRecruiters(query: string, limit: number, usaOnly: bool
               const isRecent = isRecentJob(postingDate);
               
               if (matchesLocation && isRecent) {
-                const jobUrl = job.ref || `https://jobs.smartrecruiters.com/${company}/${job.id}`;
+                // CORRECT: Use public job URL, NOT the API ref
+                const jobUrl = `https://jobs.smartrecruiters.com/${company}/${job.id}`;
                 companyJobs.push({
                   job_url: jobUrl,
                   job_url_hash: hashUrl(jobUrl),
